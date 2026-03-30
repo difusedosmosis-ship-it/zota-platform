@@ -1,0 +1,20 @@
+{
+  "name": "beautiful-mind-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:consumer": "npm --prefix apps/consumer run dev",
+    "dev:vendor": "npm --prefix apps/vendor run dev",
+    "dev:admin": "npm --prefix apps/admin run dev",
+    "verify:system": "node scripts/verify-system.mjs",
+    "build:api": "npm --prefix apps/api run build",
+    "build:consumer": "npm --prefix apps/consumer run build",
+    "build:vendor": "npm --prefix apps/vendor run build",
+    "build:admin": "npm --prefix apps/admin run build"
+  }
+}

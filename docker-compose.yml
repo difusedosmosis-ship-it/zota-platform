@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16
+    container_name: bm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: beautifulmind
+    ports:
+      - "5432:5432"
+    volumes:
+      - bm_pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: bm_api
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/beautifulmind?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/beautifulmind?schema=public
+      JWT_SECRET: dev-change-this-secret
+      JWT_EXPIRES_IN: 7d
+      OFFER_EXPIRES_SECONDS: 30
+      BOOKING_QUOTE_EXPIRES_MINUTES: 10
+      BOOKING_DEFAULT_CURRENCY: NGN
+    ports:
+      - "8080:8080"
+
+volumes:
+  bm_pgdata:

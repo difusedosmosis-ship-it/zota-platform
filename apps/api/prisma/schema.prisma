@@ -1,0 +1,522 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  CONSUMER
+  VENDOR
+  ADMIN
+}
+
+enum KycStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum RequestMode {
+  MATCHED
+  CHOOSE
+}
+
+enum RequestStatus {
+  CREATED
+  DISPATCHING
+  OFFERED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+  EXPIRED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum TxStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+/* =========================
+   ✅ BOOKING ENGINE ENUMS
+========================= */
+
+enum BookingKind {
+  HALL
+  CAR
+  HOTEL
+  FLIGHT
+}
+
+enum BookingProvider {
+  LOCAL
+  DUFFEL
+  AMADEUS
+  EAN
+}
+
+enum BookingQuoteStatus {
+  ACTIVE
+  EXPIRED
+  USED
+  CANCELED
+}
+
+enum BookingOrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELED
+  COMPLETED
+}
+
+enum ConversationKind {
+  DIRECT
+  REQUEST
+  SERVICE
+}
+
+enum MessageSenderRole {
+  CONSUMER
+  VENDOR
+  ADMIN
+}
+
+enum CallType {
+  AUDIO
+  VIDEO
+}
+
+enum CallStatus {
+  RINGING
+  ANSWERED
+  DECLINED
+  ENDED
+  MISSED
+}
+
+/* =========================
+   MODELS
+========================= */
+
+model User {
+  id           String   @id @default(cuid())
+  role         Role
+  email        String?  @unique
+  phone        String?  @unique
+  passwordHash String?
+  fullName     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vendorProfile VendorProfile?
+
+  consumerRequests Request[] @relation("ConsumerRequests")
+
+  reviewsGiven Review[] @relation("ReviewsByConsumer")
+  reviewsGot   Review[] @relation("ReviewsForVendor")
+
+  ledgerEntries WalletLedger[]
+  transactions  Transaction[]
+
+  // ✅ Booking
+  bookingQuotes BookingQuote[]
+  bookingOrders BookingOrder[]
+
+  consumerConversations Conversation[] @relation("ConversationConsumer")
+  vendorConversations   Conversation[] @relation("ConversationVendor")
+
+  sentMessages     ChatMessage[] @relation("MessageSender")
+  initiatedCalls   CallSession[] @relation("CallInitiator")
+  receivedCalls    CallSession[] @relation("CallRecipient")
+}
+
+model VendorProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  businessName String?
+  city         String?
+
+  /// ✅ Vendor geo for proximity search / dispatch
+  lat Float?
+  lng Float?
+
+  coverageKm Int     @default(10)
+  isOnline   Boolean @default(false)
+
+  kycStatus KycStatus @default(DRAFT)
+  kycNote   String?
+
+  services       VendorService[]
+  kycSubmissions KycSubmission[]
+  dispatchOffers DispatchOffer[]
+  conversations  Conversation[]
+
+  // ✅ Booking listings owned by vendor (for Halls/Cars)
+  bookingListings BookingListing[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([city])
+  @@index([isOnline])
+  @@index([kycStatus])
+  @@index([lat, lng])
+}
+
+model KycSubmission {
+  id       String @id @default(cuid())
+  vendorId String
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  idDocUrl       String?
+  selfieUrl      String?
+  businessDocUrl String?
+  skillProofUrl  String?
+
+  status       KycStatus @default(SUBMITTED)
+  reviewerNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  kind      String   @default("PHYSICAL") // PHYSICAL | BOOKING (future)
+  createdAt DateTime @default(now())
+
+  vendorServices VendorService[]
+}
+
+model VendorService {
+  id       String @id @default(cuid())
+  vendorId String
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  title       String
+  pricingType String  @default("from") // fixed | from | quote
+  priceFrom   Int?
+  coverImageUrl String?
+  galleryImageUrls String[] @default([])
+  isActive    Boolean @default(true)
+
+  conversations Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([categoryId])
+}
+
+model Request {
+  id String @id @default(cuid())
+
+  consumerId String
+  consumer   User @relation("ConsumerRequests", fields: [consumerId], references: [id], onDelete: Cascade)
+
+  mode        RequestMode
+  city        String
+  category    String
+  description String
+  urgency     String @default("normal") // normal | urgent
+
+  lat Float
+  lng Float
+
+  chosenVendorId String?
+  status         RequestStatus @default(CREATED)
+
+  acceptedVendorId String?
+  acceptedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  offers  DispatchOffer[]
+  reviews Review[]
+  conversations Conversation[]
+
+  @@index([consumerId])
+  @@index([city])
+  @@index([lat, lng])
+}
+
+model DispatchOffer {
+  id String @id @default(cuid())
+
+  requestId String
+  request   Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  vendorId String
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  status    OfferStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([requestId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Review {
+  id String @id @default(cuid())
+
+  requestId String
+  request   Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  consumerId String
+  consumer   User @relation("ReviewsByConsumer", fields: [consumerId], references: [id], onDelete: Cascade)
+
+  vendorId   String
+  vendorUser User @relation("ReviewsForVendor", fields: [vendorId], references: [id], onDelete: Cascade)
+
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([requestId])
+  @@index([consumerId])
+  @@index([vendorId])
+}
+
+model WalletLedger {
+  id String @id @default(cuid())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount   Int // +credit, -debit
+  currency String @default("NGN")
+  reason   String
+  refType  String?
+  refId    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Transaction {
+  id String @id @default(cuid())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount      Int
+  currency    String   @default("NGN")
+  status      TxStatus @default(PENDING)
+  provider    String?
+  providerRef String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/* =========================
+   ✅ BOOKING ENGINE MODELS
+========================= */
+
+model BookingListing {
+  id       String @id @default(cuid())
+
+  kind     BookingKind
+  provider BookingProvider @default(LOCAL)
+
+  /// LOCAL listings can belong to a vendor (hall/car inventory)
+  vendorId String?
+  vendor   VendorProfile? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String?
+  city        String?
+  address     String?
+
+  // optional geo for later
+  lat Float?
+  lng Float?
+
+  currency    String @default("NGN")
+  pricePerDay Int
+
+  isActive Boolean @default(true)
+
+  quotes BookingQuote[]
+  orders BookingOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+  @@index([city])
+  @@index([isActive])
+  @@index([vendorId])
+}
+
+model BookingQuote {
+  id       String @id @default(cuid())
+
+  kind     BookingKind
+  provider BookingProvider @default(LOCAL)
+
+  listingId String?
+  listing   BookingListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  userId String?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  startAt DateTime
+  endAt   DateTime
+
+  currency String @default("NGN")
+  amount   Int
+
+  status    BookingQuoteStatus @default(ACTIVE)
+  expiresAt DateTime
+
+  payload Json?
+  orders  BookingOrder[]
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([expiresAt])
+  @@index([listingId])
+  @@index([userId])
+}
+
+model BookingOrder {
+  id       String @id @default(cuid())
+
+  kind     BookingKind
+  provider BookingProvider @default(LOCAL)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  listingId String?
+  listing   BookingListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  quoteId String?
+  quote   BookingQuote? @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+
+  startAt DateTime
+  endAt   DateTime
+
+  currency String @default("NGN")
+  amount   Int
+
+  status BookingOrderStatus @default(PENDING_PAYMENT)
+
+  providerRef String?
+  details     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([status])
+}
+
+model Conversation {
+  id String @id @default(cuid())
+
+  kind ConversationKind @default(DIRECT)
+
+  consumerId String
+  consumer   User @relation("ConversationConsumer", fields: [consumerId], references: [id], onDelete: Cascade)
+
+  vendorUserId String
+  vendorUser   User @relation("ConversationVendor", fields: [vendorUserId], references: [id], onDelete: Cascade)
+
+  vendorId String?
+  vendor   VendorProfile? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  requestId String?
+  request   Request? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+
+  serviceId String?
+  service   VendorService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  messages ChatMessage[]
+  calls    CallSession[]
+
+  @@index([consumerId])
+  @@index([vendorUserId])
+  @@index([vendorId])
+  @@index([lastMessageAt])
+}
+
+model ChatMessage {
+  id String @id @default(cuid())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  senderRole MessageSenderRole
+  body       String
+  createdAt  DateTime @default(now())
+  readAt     DateTime?
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model CallSession {
+  id String @id @default(cuid())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  initiatorId String
+  initiator   User @relation("CallInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+
+  recipientId String
+  recipient   User @relation("CallRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  type      CallType   @default(AUDIO)
+  status    CallStatus @default(RINGING)
+  startedAt DateTime   @default(now())
+  answeredAt DateTime?
+  endedAt    DateTime?
+
+  @@index([conversationId])
+  @@index([initiatorId])
+  @@index([recipientId])
+  @@index([status])
+}
