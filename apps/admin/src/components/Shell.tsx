@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { clearSession, readSession } from "@/lib/session";
+import { ZotaLogo } from "@/components/ZotaLogo";
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -22,6 +23,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <main className="bm-page bm-fade-in">
       <header className="bm-topbar">
         <div>
+          <div style={{ marginBottom: 8 }}>
+            <ZotaLogo size={36} />
+          </div>
           <p className="bm-top-kicker">Beautiful Mind</p>
           <h1 className="bm-top-title">Admin</h1>
         </div>

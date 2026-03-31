@@ -26,8 +26,8 @@ function friendlyError(error?: string) {
 export default function ConsumerLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("Passw0rd!");
-  const [status, setStatus] = useState("Use email/password to login or create account.");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState("Enter your details to login or create an account.");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [busy, setBusy] = useState<null | "signup" | "login">(null);
 
@@ -84,7 +84,7 @@ export default function ConsumerLoginPage() {
     <AppShell>
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-2xl font-bold text-gray-900">Customer Login / Signup</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Login / Signup</h2>
           <p className="text-gray-600 mt-1">Access your requests and book trusted providers.</p>
           <input className="mt-4 w-full px-4 py-3 border border-gray-300 rounded-lg" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />

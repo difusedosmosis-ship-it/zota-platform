@@ -1,5 +1,7 @@
+import { BACKEND_BASE_URL } from "@/lib/backend-base";
+
 export function getRealtimeBase() {
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+  const apiBase = BACKEND_BASE_URL;
   return apiBase.replace(/^http/, "ws");
 }
 

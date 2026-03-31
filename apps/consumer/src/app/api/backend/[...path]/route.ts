@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getServerSession } from "@/lib/server/auth-cookie";
+import { BACKEND_BASE_URL } from "@/lib/backend-base";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+const BACKEND = BACKEND_BASE_URL;
 
 async function forward(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const requestId = randomUUID();
   const started = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
   const session = await getServerSession();
   const { path } = await ctx.params;
 
@@ -25,7 +28,9 @@ async function forward(req: NextRequest, ctx: { params: Promise<{ path: string[]
         ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
       },
       body,
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     const text = await upstream.text();
     console.info(JSON.stringify({ type: "audit", action: "proxy", requestId, method: req.method, endpoint, status: upstream.status, durationMs: Date.now() - started, userId: session?.user.id ?? null }));
@@ -37,8 +42,13 @@ async function forward(req: NextRequest, ctx: { params: Promise<{ path: string[]
         "x-request-id": requestId,
       },
     });
-  } catch {
-    return NextResponse.json({ ok: false, message: "Gateway error" }, { status: 502, headers: { "x-request-id": requestId } });
+  } catch (error) {
+    clearTimeout(timer);
+    const message =
+      error instanceof DOMException && error.name === "AbortError"
+        ? "Upstream backend timed out."
+        : "Gateway error";
+    return NextResponse.json({ ok: false, message }, { status: 502, headers: { "x-request-id": requestId } });
   }
 }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clearSession, readSession } from "@/lib/session";
 import { useMemo, useState } from "react";
+import { ZotaLogo } from "@/components/ZotaLogo";
 
 function MenuLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
   const pathname = usePathname();
@@ -21,17 +22,6 @@ function MenuLink({ href, label, onClick }: { href: string; label: string; onCli
     >
       {label}
     </Link>
-  );
-}
-
-function Logo() {
-  return (
-    <div className="flex items-center gap-2 sm:gap-3">
-      <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-black/10 bg-gradient-to-br from-indigo-600 to-purple-600" />
-      <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent leading-tight">
-        Zota
-      </span>
-    </div>
   );
 }
 
@@ -169,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <span className="bm-hamburger" />
             </button>
-            <Logo />
+            <ZotaLogo size={40} compact />
           </div>
 
           <div className="flex items-center gap-2">

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getServerSession } from "@/lib/server/auth-cookie";
+import { BACKEND_BASE_URL } from "@/lib/backend-base";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+const BACKEND = BACKEND_BASE_URL;
 
 async function forward(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const requestId = randomUUID();

@@ -4,7 +4,7 @@ const serverUrl = process.env.CAP_SERVER_URL;
 
 const config: CapacitorConfig = {
   appId: 'com.beautifulmind.consumer',
-  appName: 'Beautiful Mind Consumer',
+  appName: 'Zota',
   webDir: 'capacitor-shell',
   server: serverUrl
     ? {

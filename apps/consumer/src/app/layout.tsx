@@ -14,7 +14,7 @@ const code = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zota Consumer",
+  title: "Zota",
   description: "Zota by Beautiful Mind. Find trusted local services, chats, calls, and bookings fast.",
 };
 

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { setServerSession } from "@/lib/server/auth-cookie";
 import { randomUUID } from "crypto";
+import { BACKEND_BASE_URL } from "@/lib/backend-base";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+const BACKEND = BACKEND_BASE_URL;
 
 function normalizeMessage(input?: string) {
   if (!input) return "Login failed";
