@@ -114,6 +114,8 @@ export default function ConsumerDashboardPage() {
     () => categories.filter((c) => c.kind === "PHYSICAL"),
     [categories],
   );
+  const featuredCategories = useMemo(() => physicalCategories.slice(0, 8), [physicalCategories]);
+  const locationReady = lat != null && lng != null;
 
   async function bootstrap() {
     setTone("info");
@@ -313,127 +315,249 @@ export default function ConsumerDashboardPage() {
 
   return (
     <AppShell>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Customer Dashboard</h1>
-          <p className="text-gray-600 mt-1">
-            Welcome {user?.email ?? user?.phone}. Find nearby verified providers and booking services in one place.
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(129,140,248,0.22),_transparent_38%),linear-gradient(145deg,#0f172a_0%,#172554_48%,#1e1b4b_100%)] p-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-indigo-100">Zota Concierge</p>
+          <h1 className="mt-3 max-w-2xl text-3xl font-black leading-tight tracking-[-0.03em] sm:text-4xl">
+            Ask for exactly what you need. Zota routes services, bookings, and chats from one search flow.
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-slate-200 sm:text-base">
+            Signed in as {user?.email ?? user?.phone}. Start with a clear request, pick a category only when you need to narrow it, and keep the rest of the screen focused.
           </p>
-        </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          <section className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900">Physical Service Request (Geo Dispatch)</h2>
-            <p className="text-gray-600 mt-1">Example flow: car breakdown to nearest approved mechanic to instant request.</p>
-
-            <div className="mt-4 grid sm:grid-cols-2 gap-3">
-              <input className="w-full px-4 py-3 border border-gray-300 rounded-lg" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
-              <select className="w-full px-4 py-3 border border-gray-300 rounded-lg" value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)}>
-                <option value="">Select category</option>
-                {physicalCategories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <input className="w-full px-4 py-3 border border-gray-300 rounded-lg sm:col-span-2" value={issue} onChange={(e) => setIssue(e.target.value)} placeholder="Describe issue" />
-              <select className="w-full px-4 py-3 border border-gray-300 rounded-lg" value={urgency} onChange={(e) => setUrgency(e.target.value as "normal" | "urgent")}>
-                <option value="normal">Normal</option>
-                <option value="urgent">Urgent</option>
-              </select>
-              <input className="w-full px-4 py-3 border border-gray-300 rounded-lg" type="number" value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} placeholder="Radius (km)" />
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button className="px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50" onClick={detectMyLocation}>Use My Location</button>
-              <button className="px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50" onClick={searchNearby}>Search Nearby</button>
-              <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold" onClick={() => requestMatch()}>Auto-Match Request</button>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {physicalCategories.slice(0, 12).map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedCategoryId(c.id)}
-                  className={`px-3 py-1.5 rounded-full border text-sm font-medium ${
-                    selectedCategoryId === c.id
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100"
-                  }`}
+          <div className="mt-5 rounded-[26px] border border-white/10 bg-white/8 p-3 backdrop-blur">
+            <div className="rounded-[22px] border border-white/10 bg-white px-4 py-4 text-slate-900 shadow-[0_20px_40px_rgba(15,23,42,0.14)]">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
+                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                Ask Zota
+              </div>
+              <textarea
+                className="mt-3 min-h-[96px] w-full resize-none border-0 bg-transparent p-0 text-base leading-7 text-slate-900 outline-none placeholder:text-slate-400"
+                value={issue}
+                onChange={(e) => setIssue(e.target.value)}
+                placeholder="Describe what you need in plain language. Example: I need a trusted electrician in Lekki this evening, or find me a calm business hotel in Abuja for Friday."
+              />
+              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_180px_140px]">
+                <input
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="City"
+                />
+                <select
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white"
+                  value={selectedCategoryId}
+                  onChange={(e) => setSelectedCategoryId(e.target.value)}
                 >
-                  {c.name}
+                  <option value="">Any category</option>
+                  {physicalCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white"
+                  value={urgency}
+                  onChange={(e) => setUrgency(e.target.value as "normal" | "urgent")}
+                >
+                  <option value="normal">Normal</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {featuredCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedCategoryId(c.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      selectedCategoryId === c.id
+                        ? "border-indigo-600 bg-indigo-600 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  onClick={searchNearby}
+                >
+                  Find verified pros
                 </button>
-              ))}
+                <button
+                  className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  onClick={() => requestMatch()}
+                >
+                  Auto-match now
+                </button>
+                <button
+                  className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  onClick={detectMyLocation}
+                >
+                  {locationReady ? "Refresh my location" : "Use my location"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            <span className={`rounded-full border px-3 py-1.5 font-medium ${locationReady ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-100" : "border-white/15 bg-white/10 text-slate-200"}`}>
+              {locationReady ? "Location ready for nearby dispatch" : "Location not yet set"}
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 font-medium text-slate-200">
+              Radius {radiusKm}km
+            </span>
+            {activeRequestId && (
+              <span className="rounded-full border border-indigo-300/30 bg-indigo-300/15 px-3 py-1.5 font-medium text-indigo-100">
+                Live request {activeRequestId.slice(0, 8)}
+              </span>
+            )}
+          </div>
+        </section>
+
+        <section className="mt-5 grid gap-4 md:grid-cols-3">
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Service dispatch</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">Nearby help, minus the noise.</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Ask in plain language, shortlist verified vendors, and turn the best match into a live request.
+            </p>
+          </article>
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Booking engine</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">Hotels, halls, cars, flights.</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Keep structured booking search available, but cleaner and secondary to the main concierge input.
+            </p>
+          </article>
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Realtime support</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">Messages and calls stay one tap away.</h2>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/messages" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
+                Open inbox
+              </Link>
+              <Link href="/requests" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                Track requests
+              </Link>
+            </div>
+          </article>
+        </section>
+
+        <div className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Verified vendors nearby</p>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Clean shortlist, not clutter.</h2>
+              </div>
+              <div className="flex gap-2">
+                <button className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={detectMyLocation}>
+                  {locationReady ? "Refresh location" : "Set location"}
+                </button>
+                <button className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700" onClick={searchNearby}>
+                  Search
+                </button>
+              </div>
             </div>
 
-            <p className="text-sm text-gray-500 mt-3">Geo: {lat ?? "-"}, {lng ?? "-"}</p>
-            {activeRequestId && <p className="text-sm text-indigo-700 mt-1">Active request ID: {activeRequestId}</p>}
-
-            <div className="mt-4 space-y-2">
-              {nearby.map((v) => (
-                <div key={v.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{v.businessName ?? "Unnamed Vendor"}</p>
-                    <p className="text-sm text-gray-600">{v.city ?? "-"} · {v.distanceKm}km away · coverage {v.coverageKm}km</p>
-                    <p className="text-xs text-indigo-700 mt-1">
-                      Rating: {reviewMap[v.id] ? reviewMap[v.id].averageRating.toFixed(1) : "0.0"} ({reviewMap[v.id]?.totalReviews ?? 0} review(s))
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <button className="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg font-semibold" onClick={() => requestMatch(v.id)}>
-                      Request This Vendor
-                    </button>
-                    <Link className="px-3 py-2 border border-gray-300 hover:bg-gray-50 text-center rounded-lg font-semibold text-gray-700" href={`/messages?vendorId=${encodeURIComponent(v.id)}`}>
-                      Message
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {nearby.length === 0 ? (
+              <div className="mt-4 rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
+                Once you search, verified vendors will appear here with distance, rating, and a direct path to request or message them.
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {nearby.map((v) => (
+                  <article key={v.id} className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-bold text-slate-900">{v.businessName ?? "Unnamed Vendor"}</h3>
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${v.isOnline ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
+                            {v.isOnline ? "Online" : "Offline"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-slate-600">
+                          {v.city ?? city} · {v.distanceKm}km away · covers {v.coverageKm}km
+                        </p>
+                        <p className="mt-1 text-sm text-indigo-700">
+                          {reviewMap[v.id] ? reviewMap[v.id].averageRating.toFixed(1) : "0.0"} rating · {reviewMap[v.id]?.totalReviews ?? 0} review(s)
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white" onClick={() => requestMatch(v.id)}>
+                          Request vendor
+                        </button>
+                        <Link className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700" href={`/messages?vendorId=${encodeURIComponent(v.id)}`}>
+                          Message
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
-          <section className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900">Booking Engine</h2>
-            <p className="text-gray-600 mt-1">Hotels, car rentals, flights, and event halls from one booking flow.</p>
-
-            <div className="mt-4 grid sm:grid-cols-2 gap-3">
-              <select className="w-full px-4 py-3 border border-gray-300 rounded-lg" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL" | "FLIGHT")}>
-                <option value="HOTEL">Hotels</option>
-                <option value="CAR">Car Rentals</option>
-                <option value="HALL">Event Halls</option>
-                <option value="FLIGHT">Flights</option>
-              </select>
-              <input className="w-full px-4 py-3 border border-gray-300 rounded-lg" value={bookingCity} onChange={(e) => setBookingCity(e.target.value)} placeholder="City" />
-              <input className="w-full px-4 py-3 border border-gray-300 rounded-lg" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
-              <input className="w-full px-4 py-3 border border-gray-300 rounded-lg" type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Booking search</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Structured booking, cleaner surface.</h2>
+            <div className="mt-4 grid gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL" | "FLIGHT")}>
+                  <option value="HOTEL">Hotels</option>
+                  <option value="CAR">Car Rentals</option>
+                  <option value="HALL">Event Halls</option>
+                  <option value="FLIGHT">Flights</option>
+                </select>
+                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none" value={bookingCity} onChange={(e) => setBookingCity(e.target.value)} placeholder="City" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none" type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+              </div>
+              <button className="rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700" onClick={searchBookings}>
+                Search {bookingKind.toLowerCase()} availability
+              </button>
             </div>
 
-            <div className="mt-4 flex gap-3">
-              <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold" onClick={searchBookings}>Search Booking Services</button>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {bookingResults.map((b) => (
-                <div key={b.id} className="border border-gray-200 rounded-lg p-3">
-                  <p className="font-semibold text-gray-900">{b.title}</p>
-                  <p className="text-sm text-gray-600">{b.kind} · {b.city ?? "-"} · {b.currency} {b.pricePerDay}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      className="px-3 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60"
-                      disabled={bookingBusyId === `${b.id}:CARD`}
-                      onClick={() => reserveBooking(b.id, "CARD")}
-                    >
-                      {bookingBusyId === `${b.id}:CARD` ? "Processing..." : "Reserve With Card"}
-                    </button>
-                    <button
-                      className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-60"
-                      disabled={bookingBusyId === `${b.id}:WALLET`}
-                      onClick={() => reserveBooking(b.id, "WALLET")}
-                    >
-                      {bookingBusyId === `${b.id}:WALLET` ? "Processing..." : "Pay With Wallet"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {bookingResults.length === 0 ? (
+              <div className="mt-4 rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
+                Booking results stay tucked away until you ask for them. This keeps the dashboard focused on the main search action.
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {bookingResults.map((b) => (
+                  <article key={b.id} className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900">{b.title}</h3>
+                        <p className="mt-1 text-sm text-slate-600">{b.kind} · {b.city ?? "-"} · {b.currency} {b.pricePerDay}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                          disabled={bookingBusyId === `${b.id}:CARD`}
+                          onClick={() => reserveBooking(b.id, "CARD")}
+                        >
+                          {bookingBusyId === `${b.id}:CARD` ? "Processing..." : "Pay with card"}
+                        </button>
+                        <button
+                          className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60"
+                          disabled={bookingBusyId === `${b.id}:WALLET`}
+                          onClick={() => reserveBooking(b.id, "WALLET")}
+                        >
+                          {bookingBusyId === `${b.id}:WALLET` ? "Processing..." : "Use wallet"}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </div>

@@ -112,6 +112,7 @@ export default function VendorDashboardPage() {
     () => requests.filter((row) => row.offers.length > 0),
     [requests],
   );
+  const locationReady = vendor?.lat != null && vendor?.lng != null;
 
   const mergeRequest = useCallback((next: VendorRequest) => {
     setRequests((current) => {
@@ -297,47 +298,85 @@ export default function VendorDashboardPage() {
 
   return (
     <AppShell>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Vendor Dashboard</h1>
-          <p className="text-gray-600 mt-1">Accept nearby jobs, manage active work, and keep your dispatch location current.</p>
-        </div>
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_36%),linear-gradient(145deg,#0f172a_0%,#13253f_42%,#052e2b_100%)] p-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-emerald-100">Zota Business</p>
+          <h1 className="mt-3 text-3xl font-black tracking-[-0.03em] sm:text-4xl">
+            Keep the business side clear: offers, jobs, trust, chat, and calls in one mobile control room.
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-slate-200 sm:text-base">
+            Logged in as {user?.email ?? user?.phone}. This version prioritizes clean actions and safe mobile spacing over the old crowded dashboard.
+          </p>
 
-        <div className="grid md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">Account</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">{user?.email ?? user?.phone}</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-4">
+            <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Business</p>
+              <p className="mt-2 text-lg font-bold text-white">{vendor?.businessName ?? "Set your business"}</p>
+            </article>
+            <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">KYC</p>
+              <p className="mt-2 text-lg font-bold text-white">{vendor?.kycStatus ?? "Unknown"}</p>
+            </article>
+            <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Dispatch status</p>
+              <p className="mt-2 text-lg font-bold text-white">{vendor?.isOnline ? "Online" : "Offline"}</p>
+            </article>
+            <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Location</p>
+              <p className="mt-2 text-lg font-bold text-white">{locationReady ? "Synced" : "Needs sync"}</p>
+            </article>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">Business</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">{vendor?.businessName ?? "Not set"}</p>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900" onClick={syncMyLocation}>
+              {locationReady ? "Refresh my location" : "Sync my location"}
+            </button>
+            <button className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" onClick={refreshAll}>
+              Refresh workspace
+            </button>
+            <Link className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" href="/services">
+              Manage services
+            </Link>
+            <Link className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" href="/messages">
+              Inbox and calls
+            </Link>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">KYC Status</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">{vendor?.kycStatus ?? "-"}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">Location</p>
-            <p className="mt-1 text-sm font-semibold text-gray-900">
-              {vendor?.lat != null && vendor?.lng != null ? `${vendor.lat.toFixed(4)}, ${vendor.lng.toFixed(4)}` : "Not synced"}
+        </section>
+
+        <section className="mt-5 grid gap-4 md:grid-cols-3">
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Offer queue</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{latestOffer ? "A request needs your response." : "No offer waiting right now."}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              New dispatch offers stay prominent, not buried below other controls.
             </p>
-          </div>
-        </div>
+          </article>
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Active jobs</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{activeJobs.length} live {activeJobs.length === 1 ? "job" : "jobs"}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Start, complete, chat, and call from a tighter operational view.
+            </p>
+          </article>
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Customer line</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">Calls stay one tap away.</h2>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/messages" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
+                Open inbox
+              </Link>
+              <Link href="/kyc" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                Trust settings
+              </Link>
+            </div>
+          </article>
+        </section>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button className="px-5 py-3 border border-gray-300 hover:bg-gray-50 rounded-lg font-semibold" onClick={refreshAll}>Refresh</button>
-          <button className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold" onClick={syncMyLocation}>
-            Sync My Location
-          </button>
-          <Link className="px-5 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg font-semibold" href="/kyc">Manage KYC</Link>
-          <Link className="px-5 py-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg font-semibold" href="/services">Manage Services</Link>
-        </div>
-
-        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6">
+        <section className="mt-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Live Offer Queue</h2>
-              <p className="text-sm text-gray-600 mt-1">Newest dispatch offer sent to your account.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Live offer queue</p>
+              <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Respond fast, then move into delivery.</h2>
             </div>
             {latestOffer && (
               <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
@@ -347,34 +386,32 @@ export default function VendorDashboardPage() {
           </div>
 
           {!latestOffer ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-gray-600">
-              No pending offer right now.
+            <div className="mt-4 rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
+              No pending offer at the moment. Refresh or keep the inbox open while dispatch is active.
             </div>
           ) : (
-            <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-5">
+            <div className="mt-4 rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-5">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-semibold text-gray-900">{latestOffer.request.category}</h3>
+                <h3 className="text-lg font-bold text-slate-900">{latestOffer.request.category}</h3>
                 {latestOffer.request.urgency === "urgent" && (
                   <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
                     Urgent
                   </span>
                 )}
               </div>
-              <p className="mt-2 text-gray-700">{latestOffer.request.description}</p>
-              <p className="mt-2 text-sm text-gray-600">
-                {latestOffer.request.city} · {latestOffer.request.lat.toFixed(4)}, {latestOffer.request.lng.toFixed(4)}
-              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{latestOffer.request.description}</p>
+              <p className="mt-2 text-sm text-slate-600">{latestOffer.request.city} · ready for dispatch</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   disabled={busyAction === "accept"}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                  className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                   onClick={acceptOffer}
                 >
-                  {busyAction === "accept" ? "Accepting..." : "Accept"}
+                  {busyAction === "accept" ? "Accepting..." : "Accept request"}
                 </button>
                 <button
                   disabled={busyAction === "decline"}
-                  className="rounded-xl border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-white disabled:opacity-60"
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60"
                   onClick={declineOffer}
                 >
                   {busyAction === "decline" ? "Declining..." : "Decline"}
@@ -384,47 +421,56 @@ export default function VendorDashboardPage() {
           )}
         </section>
 
-        <section className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900">Active Jobs</h2>
+        <section className="mt-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Active jobs</p>
+              <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Current workstream</h2>
+            </div>
+            <Link href="/messages" className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
+              Open inbox
+            </Link>
+          </div>
+
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             {activeJobs.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-5 text-gray-600">
-                Accepted and in-progress jobs will show here.
+              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
+                Accepted and in-progress jobs will appear here once a request is assigned to you.
               </div>
             ) : (
               activeJobs.map((job) => (
-                <article key={job.id} className="rounded-2xl border border-gray-200 bg-white p-5">
+                <article key={job.id} className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{job.category}</h3>
+                        <h3 className="text-lg font-bold text-slate-900">{job.category}</h3>
                         <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${requestTone(job.status)}`}>
                           {job.status.replaceAll("_", " ")}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-gray-600">{job.description}</p>
-                      <p className="mt-2 text-sm text-gray-700">
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{job.description}</p>
+                      <p className="mt-2 text-sm text-slate-700">
                         Customer: {job.consumer.fullName ?? job.consumer.email ?? job.consumer.phone ?? "Unknown"}
                       </p>
                     </div>
-                    <Link className="rounded-xl border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50" href={`/messages?requestId=${job.id}`}>
-                      Chat
+                    <Link className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700" href={`/messages?requestId=${job.id}`}>
+                      Chat & call
                     </Link>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-3">
                     {job.status === "ACCEPTED" && (
                       <button
                         disabled={busyAction === `start:${job.id}`}
-                        className="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                        className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                         onClick={() => updateJob(job.id, "start")}
                       >
-                        {busyAction === `start:${job.id}` ? "Starting..." : "Start Job"}
+                        {busyAction === `start:${job.id}` ? "Starting..." : "Start job"}
                       </button>
                     )}
                     {job.status === "IN_PROGRESS" && (
                       <>
                         <input
-                          className="rounded-xl border border-gray-300 px-4 py-2 text-sm"
+                          className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none"
                           type="number"
                           min={0}
                           step={100}
@@ -439,10 +485,10 @@ export default function VendorDashboardPage() {
                         />
                         <button
                           disabled={busyAction === `complete:${job.id}`}
-                          className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                          className="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                           onClick={() => updateJob(job.id, "complete")}
                         >
-                          {busyAction === `complete:${job.id}` ? "Completing..." : "Complete Job"}
+                          {busyAction === `complete:${job.id}` ? "Completing..." : "Complete job"}
                         </button>
                       </>
                     )}
@@ -453,20 +499,21 @@ export default function VendorDashboardPage() {
           </div>
         </section>
 
-        <section className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900">Offer History</h2>
+        <section className="mt-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Offer history</p>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Recent movement</h2>
           <div className="mt-4 space-y-3">
             {offerHistory.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-5 text-gray-600">
-                Offer history will appear after dispatches begin reaching your account.
+              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
+                Offer history will appear once dispatches start moving through your account.
               </div>
             ) : (
               offerHistory.map((row) => (
-                <article key={row.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+                <article key={row.id} className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-gray-900">{row.category}</p>
-                      <p className="text-sm text-gray-600">{row.description}</p>
+                      <p className="font-semibold text-slate-900">{row.category}</p>
+                      <p className="text-sm text-slate-600">{row.description}</p>
                     </div>
                     <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${requestTone(row.status)}`}>
                       {row.status.replaceAll("_", " ")}

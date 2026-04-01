@@ -192,14 +192,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <div className="mt-4 flex flex-col gap-2">
-              <MenuLink href="/" label="Landing" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/dashboard" label="Dashboard" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/dashboard" label="Home" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/bookings" label="Bookings" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/requests" label="Track Requests" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/messages" label="Messages & Calls" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/wallet" label="Wallet" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/profile" label="Profile" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/messages" label="Messages" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/notifications" label="Notifications" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/notifications" label="Alerts" onClick={() => setMenuOpen(false)} />
             </div>
 
             {hasSession && (
