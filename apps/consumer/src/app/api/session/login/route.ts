@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setServerSession } from "@/lib/server/auth-cookie";
+import { applyServerSession } from "@/lib/server/auth-cookie";
 import { randomUUID } from "crypto";
 import { BACKEND_BASE_URL } from "@/lib/backend-base";
 
@@ -41,10 +41,10 @@ export async function POST(req: Request) {
       );
     }
 
-    await setServerSession({ token: data.token, user: data.user });
-
     console.info(JSON.stringify({ type: "audit", action: "session_login", requestId, status: 200, durationMs: Date.now() - started, userId: data.user.id }));
-    return NextResponse.json({ ok: true, user: data.user }, { headers: { "x-request-id": requestId } });
+    const response = NextResponse.json({ ok: true, user: data.user }, { headers: { "x-request-id": requestId } });
+    applyServerSession(response, { token: data.token, user: data.user });
+    return response;
   } catch (error) {
     clearTimeout(timer);
     const message =

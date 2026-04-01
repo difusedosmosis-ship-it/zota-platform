@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
 export const COOKIE_NAME = "bm_session";
 
@@ -51,9 +52,29 @@ export async function setServerSession(payload: CookiePayload) {
   });
 }
 
+export function applyServerSession(response: NextResponse, payload: CookiePayload) {
+  response.cookies.set(COOKIE_NAME, encodePayload(payload), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+}
+
 export async function clearServerSession() {
   const store = await cookies();
   store.set(COOKIE_NAME, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: new Date(0),
+  });
+}
+
+export function applyClearedServerSession(response: NextResponse) {
+  response.cookies.set(COOKIE_NAME, "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

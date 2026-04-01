@@ -54,8 +54,9 @@ export default function ConsumerLoginPage() {
     }
     writeSession({ user: res.data.user });
     setTone("success");
+    setStatus("Account created. Redirecting...");
     setBusy(null);
-    router.push("/dashboard");
+    window.location.assign("/dashboard");
   }
 
   async function login() {
@@ -76,8 +77,9 @@ export default function ConsumerLoginPage() {
     }
     writeSession({ user: res.data.user });
     setTone("success");
+    setStatus("Signed in. Redirecting...");
     setBusy(null);
-    router.push("/dashboard");
+    window.location.assign("/dashboard");
   }
 
   return (
