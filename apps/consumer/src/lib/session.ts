@@ -31,3 +31,25 @@ export function clearSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY);
 }
+
+export async function restoreSessionFromServer(): Promise<Session | null> {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const res = await fetch("/api/session/me", {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as { ok: boolean; user?: SessionUser | null };
+    if (!data.ok || !data.user) return null;
+
+    const session = { user: data.user };
+    writeSession(session);
+    return session;
+  } catch {
+    return null;
+  }
+}

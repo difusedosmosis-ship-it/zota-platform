@@ -134,9 +134,15 @@ export default function VendorKycPage() {
   }
 
   useEffect(() => {
-    const session = requireRole(router, "VENDOR");
-    if (!session) return;
-    void loadVendor();
+    let cancelled = false;
+    void (async () => {
+      const session = await requireRole(router, "VENDOR");
+      if (!session || cancelled) return;
+      await loadVendor();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router, loadVendor]);
 
   return (

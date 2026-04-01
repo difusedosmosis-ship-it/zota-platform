@@ -78,12 +78,18 @@ export default function WalletPage() {
   }, []);
 
   useEffect(() => {
-    const session = requireRole(router, "CONSUMER");
-    if (!session) return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      void loadWallet();
+      void (async () => {
+        const session = await requireRole(router, "CONSUMER");
+        if (!session || cancelled) return;
+        await loadWallet();
+      })();
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [router, loadWallet]);
 
   useEffect(() => {

@@ -6,7 +6,7 @@ import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
 import { getRealtimeBase, fetchWsToken } from "@/lib/realtime";
-import { readSession } from "@/lib/session";
+import { readSession, type SessionUser } from "@/lib/session";
 import { requireRole } from "@/lib/route-guard";
 
 type Conversation = {
@@ -59,8 +59,8 @@ const rtcConfig: RTCConfiguration = {
 export default function MessagesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const session = readSession();
-  const myUserId = session?.user.id ?? "";
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(() => readSession()?.user ?? null);
+  const myUserId = sessionUser?.id ?? "";
 
   const [status, setStatus] = useState("Connecting chat...");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
@@ -326,14 +326,20 @@ export default function MessagesPage() {
   }, [activeCall]);
 
   useEffect(() => {
-    requireRole(router, "CONSUMER");
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      void loadConversations();
-      void ensureConversationFromQuery();
-      void setupRealtime();
+      void (async () => {
+        const session = await requireRole(router, "CONSUMER");
+        if (!session || cancelled) return;
+        setSessionUser(session.user);
+        await loadConversations();
+        await ensureConversationFromQuery();
+        await setupRealtime();
+      })();
     }, 0);
 
     return () => {
+      cancelled = true;
       window.clearTimeout(timer);
       wsRef.current?.close();
       teardownCall();

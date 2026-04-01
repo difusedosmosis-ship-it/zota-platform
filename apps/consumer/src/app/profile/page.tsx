@@ -9,7 +9,7 @@ export default function ProfilePage() {
   const router = useRouter();
 
   useEffect(() => {
-    requireRole(router, "CONSUMER");
+    void requireRole(router, "CONSUMER");
   }, [router]);
 
   return (

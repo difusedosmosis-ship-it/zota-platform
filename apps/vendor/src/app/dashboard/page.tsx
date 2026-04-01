@@ -8,7 +8,7 @@ import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { fetchWsToken, getRealtimeBase } from "@/lib/realtime";
 import { pushNotification } from "@/lib/notifications";
-import { readSession } from "@/lib/session";
+import { readSession, type SessionUser } from "@/lib/session";
 import { requireRole } from "@/lib/route-guard";
 
 type VendorMeResponse = {
@@ -94,7 +94,7 @@ function requestTone(status: VendorRequest["status"]) {
 
 export default function VendorDashboardPage() {
   const router = useRouter();
-  const user = readSession()?.user ?? null;
+  const [user, setUser] = useState<SessionUser | null>(() => readSession()?.user ?? null);
   const [vendor, setVendor] = useState<VendorMeResponse["vendor"] | null>(null);
   const [latestOffer, setLatestOffer] = useState<OfferResponse["offer"]>(null);
   const [requests, setRequests] = useState<VendorRequest[]>([]);
@@ -160,12 +160,19 @@ export default function VendorDashboardPage() {
   }, [refreshOffer, refreshRequests, refreshVendor]);
 
   useEffect(() => {
-    const session = requireRole(router, "VENDOR");
-    if (!session) return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      void refreshAll();
+      void (async () => {
+        const session = await requireRole(router, "VENDOR");
+        if (!session || cancelled) return;
+        setUser(session.user);
+        await refreshAll();
+      })();
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [router, refreshAll]);
 
   useEffect(() => {

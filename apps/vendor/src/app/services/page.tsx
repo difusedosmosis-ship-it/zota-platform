@@ -167,12 +167,18 @@ export default function VendorServicesPage() {
   }
 
   useEffect(() => {
-    const session = requireRole(router, "VENDOR");
-    if (!session) return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      void Promise.all([loadCategories(), loadServices(), loadBookingListings()]);
+      void (async () => {
+        const session = await requireRole(router, "VENDOR");
+        if (!session || cancelled) return;
+        await Promise.all([loadCategories(), loadServices(), loadBookingListings()]);
+      })();
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 

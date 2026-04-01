@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
-import { readSession } from "@/lib/session";
+import { readSession, type SessionUser } from "@/lib/session";
 import { requireRole } from "@/lib/route-guard";
 
 type Category = { id: string; name: string; kind: string };
@@ -85,7 +85,7 @@ type BookingCheckoutResponse = {
 
 export default function ConsumerDashboardPage() {
   const router = useRouter();
-  const user = readSession()?.user ?? null;
+  const [user, setUser] = useState<SessionUser | null>(() => readSession()?.user ?? null);
   const [status, setStatus] = useState("Loading dashboard...");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
 
@@ -133,12 +133,19 @@ export default function ConsumerDashboardPage() {
   }
 
   useEffect(() => {
-    const session = requireRole(router, "CONSUMER");
-    if (!session) return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      void bootstrap();
+      void (async () => {
+        const session = await requireRole(router, "CONSUMER");
+        if (!session || cancelled) return;
+        setUser(session.user);
+        await bootstrap();
+      })();
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [router]);
 
   function detectMyLocation() {

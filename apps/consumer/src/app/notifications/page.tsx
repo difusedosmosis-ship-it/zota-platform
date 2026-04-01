@@ -12,13 +12,19 @@ export default function NotificationsPage() {
   const [items, setItems] = useState<AppNotification[]>(() => readNotifications());
 
   useEffect(() => {
-    const session = requireRole(router, "CONSUMER");
-    if (!session) return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      setItems(readNotifications());
-      markAllNotificationsRead();
+      void (async () => {
+        const session = await requireRole(router, "CONSUMER");
+        if (!session || cancelled) return;
+        setItems(readNotifications());
+        markAllNotificationsRead();
+      })();
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [router]);
 
   return (

@@ -59,12 +59,18 @@ export default function VendorWalletPage() {
   }, []);
 
   useEffect(() => {
-    const session = requireRole(router, "VENDOR");
-    if (!session) return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      void loadFinance();
+      void (async () => {
+        const session = await requireRole(router, "VENDOR");
+        if (!session || cancelled) return;
+        await loadFinance();
+      })();
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [router, loadFinance]);
 
   return (
