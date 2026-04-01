@@ -147,85 +147,96 @@ export default function VendorKycPage() {
 
   return (
     <AppShell>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900">Business Profile</h2>
-          <input className="mt-4 w-full px-4 py-3 border border-gray-300 rounded-lg" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business Name" />
-          <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
-          <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" type="number" value={coverageKm} onChange={(e) => setCoverageKm(Number(e.target.value))} placeholder="Coverage (KM)" />
-          <label className="mt-3 block text-gray-700"><input type="checkbox" checked={isOnline} onChange={(e) => setIsOnline(e.target.checked)} /> Online</label>
-          <button className="mt-4 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold" onClick={saveProfile}>Save Profile</button>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900">KYC Submission</h2>
-          <p className="text-gray-600 mt-1 text-sm">Required: Business name, CAC/business document, NIN/ID, and skill certificate.</p>
-          <p className="text-gray-600 mt-2">Current status: <span className="font-semibold">{kycStatus}</span></p>
-          {kycNote && <p className="text-gray-600 mt-1">Note: {kycNote}</p>}
-
-          <div className="mt-4">
-            <label className="text-sm font-medium text-gray-700">NIN Number (optional if ID document is uploaded)</label>
-            <input className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg" value={ninNumber} onChange={(e) => setNinNumber(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="11-digit NIN number" />
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">KYC & trust</p>
+              <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Verification centre</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                Keep business identity, service proof, and profile readiness in one place so customers and payouts trust your account.
+              </p>
+            </div>
+            <div className="rounded-[22px] bg-slate-50 px-4 py-3 text-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Current status</p>
+              <p className="mt-1 font-bold text-slate-950">{kycStatus}</p>
+              {kycNote && <p className="mt-2 text-slate-500">{kycNote}</p>}
+            </div>
           </div>
+        </section>
 
-          <div className="mt-4">
-            <label className="text-sm font-medium text-gray-700">NIN / Government ID</label>
-            <input className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg" value={idDocUrl} onChange={(e) => setIdDocUrl(e.target.value)} placeholder="Paste file URL or data URL" />
-            <input
-              className="mt-2 block w-full text-sm text-gray-600"
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void uploadKycFile(file, setIdDocUrl, "ID document");
-              }}
-            />
-          </div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Business profile</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Public operating details</h2>
 
-          <div className="mt-3">
-            <label className="text-sm font-medium text-gray-700">CAC / Business Registration Certificate</label>
-            <input className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg" value={businessDocUrl} onChange={(e) => setBusinessDocUrl(e.target.value)} placeholder="Paste file URL or data URL" />
-            <input
-              className="mt-2 block w-full text-sm text-gray-600"
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void uploadKycFile(file, setBusinessDocUrl, "Business document");
-              }}
-            />
-          </div>
+            <div className="mt-4 grid gap-3">
+              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
+                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={coverageKm} onChange={(e) => setCoverageKm(Number(e.target.value))} placeholder="Coverage (KM)" />
+              </div>
+              <label className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+                <input type="checkbox" checked={isOnline} onChange={(e) => setIsOnline(e.target.checked)} />
+                Accept new customer demand right now
+              </label>
+            </div>
 
-          <div className="mt-3">
-            <label className="text-sm font-medium text-gray-700">Skill Certificate / Portfolio Proof</label>
-            <input className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg" value={skillProofUrl} onChange={(e) => setSkillProofUrl(e.target.value)} placeholder="Paste file URL or data URL" />
-            <input
-              className="mt-2 block w-full text-sm text-gray-600"
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void uploadKycFile(file, setSkillProofUrl, "Skill proof");
-              }}
-            />
-          </div>
+            <button className="mt-5 rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white" onClick={saveProfile}>Save business profile</button>
+          </section>
 
-          <div className="mt-3">
-            <label className="text-sm font-medium text-gray-700">Selfie (optional)</label>
-            <input className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-lg" value={selfieUrl} onChange={(e) => setSelfieUrl(e.target.value)} placeholder="Paste selfie URL or upload file" />
-            <input
-              className="mt-2 block w-full text-sm text-gray-600"
-              type="file"
-              accept="image/*"
-              capture="user"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void uploadKycFile(file, setSelfieUrl, "Selfie");
-              }}
-            />
-          </div>
+          <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Verification evidence</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Submit compliance files</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Required: government identity or NIN, CAC/business proof, and skill proof. Selfie is optional but recommended.</p>
 
-          <button className="mt-4 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold" onClick={submitKyc}>Submit KYC</button>
+            <div className="mt-4 grid gap-4">
+              <div className="rounded-[24px] border border-slate-200 p-4">
+                <label className="text-sm font-semibold text-slate-900">NIN number</label>
+                <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={ninNumber} onChange={(e) => setNinNumber(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="11-digit NIN number" />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
+                  <label className="text-sm font-semibold text-slate-900">NIN / Government ID</label>
+                  <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={idDocUrl} onChange={(e) => setIdDocUrl(e.target.value)} placeholder="Paste file URL" />
+                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadKycFile(file, setIdDocUrl, "ID document");
+                  }} />
+                </div>
+
+                <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
+                  <label className="text-sm font-semibold text-slate-900">CAC / Business certificate</label>
+                  <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={businessDocUrl} onChange={(e) => setBusinessDocUrl(e.target.value)} placeholder="Paste file URL" />
+                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadKycFile(file, setBusinessDocUrl, "Business document");
+                  }} />
+                </div>
+
+                <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
+                  <label className="text-sm font-semibold text-slate-900">Skill proof / portfolio</label>
+                  <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={skillProofUrl} onChange={(e) => setSkillProofUrl(e.target.value)} placeholder="Paste file URL" />
+                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadKycFile(file, setSkillProofUrl, "Skill proof");
+                  }} />
+                </div>
+
+                <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
+                  <label className="text-sm font-semibold text-slate-900">Selfie (optional)</label>
+                  <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={selfieUrl} onChange={(e) => setSelfieUrl(e.target.value)} placeholder="Paste file URL" />
+                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*" capture="user" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadKycFile(file, setSelfieUrl, "Selfie");
+                  }} />
+                </div>
+              </div>
+            </div>
+
+            <button className="mt-5 rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white" onClick={submitKyc}>Submit KYC</button>
+          </section>
         </div>
       </div>
       <StatusToast message={status} tone={tone} />

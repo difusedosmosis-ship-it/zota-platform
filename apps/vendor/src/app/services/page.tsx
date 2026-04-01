@@ -184,118 +184,186 @@ export default function VendorServicesPage() {
 
   return (
     <AppShell>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900">Create Service Listing</h2>
-          <select className="mt-4 w-full px-4 py-3 border border-gray-300 rounded-lg" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">Select category</option>
-            {physicalCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" value={serviceTitle} onChange={(e) => setServiceTitle(e.target.value)} placeholder="Service title" />
-          <select className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" value={pricingType} onChange={(e) => setPricingType(e.target.value)}>
-            <option value="from">from</option>
-            <option value="fixed">fixed</option>
-            <option value="quote">quote</option>
-          </select>
-          <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" type="number" value={priceFrom} onChange={(e) => setPriceFrom(Number(e.target.value))} placeholder="Price" />
-          <label className="mt-3 block text-sm font-medium text-gray-700">Cover image</label>
-          <input
-            className="mt-1 block w-full text-sm text-gray-600"
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              setStatus("Uploading cover image...");
-              setTone("info");
-              void uploadServiceImage(file)
-                .then((url) => {
-                  setCoverImageUrl(url);
-                  setStatus("Cover uploaded.");
-                  setTone("success");
-                })
-                .catch((err: unknown) => {
-                  setStatus(err instanceof Error ? err.message : "Cover upload failed");
-                  setTone("error");
-                });
-            }}
-          />
-          {coverImageUrl && <p className="mt-1 text-xs text-indigo-700 truncate">{coverImageUrl}</p>}
-
-          <label className="mt-3 block text-sm font-medium text-gray-700">Gallery images (max 5)</label>
-          <input
-            className="mt-1 block w-full text-sm text-gray-600"
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => {
-              const files = Array.from(e.target.files ?? []).slice(0, 5);
-              if (!files.length) return;
-              setStatus("Uploading gallery...");
-              setTone("info");
-              void Promise.all(files.map((f) => uploadServiceImage(f)))
-                .then((urls) => {
-                  setGalleryImageUrls(urls.slice(0, 5));
-                  setStatus("Gallery uploaded.");
-                  setTone("success");
-                })
-                .catch((err: unknown) => {
-                  setStatus(err instanceof Error ? err.message : "Gallery upload failed");
-                  setTone("error");
-                });
-            }}
-          />
-          {galleryImageUrls.length > 0 && <p className="mt-1 text-xs text-indigo-700">{galleryImageUrls.length} gallery image(s) ready.</p>}
-          <button className="mt-4 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold" onClick={createService}>Publish Service</button>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900">My Services</h2>
-          {services.length === 0 ? (
-            <p className="text-gray-600 mt-3">No services yet.</p>
-          ) : (
-            <ul className="mt-3 space-y-2 text-gray-700">
-              {services.map((s) => (
-                <li key={s.id} className="border border-gray-200 rounded-lg px-3 py-2">
-                  {s.title} - {s.category.name} ({s.pricingType}{s.priceFrom ? `: ${s.priceFrom}` : ""})
-                  {s.coverImageUrl && <p className="text-xs text-indigo-700 truncate mt-1">Cover: {s.coverImageUrl}</p>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900">Create Booking Asset</h2>
-          <p className="text-gray-600 mt-1">For hotels, car rentals, and event halls.</p>
-          <select className="mt-4 w-full px-4 py-3 border border-gray-300 rounded-lg" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL")}>
-            <option value="HOTEL">Hotel</option>
-            <option value="CAR">Car Rental</option>
-            <option value="HALL">Event Hall</option>
-          </select>
-          <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" value={bookingTitle} onChange={(e) => setBookingTitle(e.target.value)} placeholder="Listing title" />
-          <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" value={bookingCity} onChange={(e) => setBookingCity(e.target.value)} placeholder="City" />
-          <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" type="number" value={bookingPrice} onChange={(e) => setBookingPrice(Number(e.target.value))} placeholder="Price per day" />
-          <div className="mt-4 flex gap-3">
-            <button className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold" onClick={createBookingListing}>Create Asset</button>
-            <button className="px-5 py-3 border border-gray-300 hover:bg-gray-50 rounded-lg font-semibold" onClick={loadBookingListings}>Refresh</button>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-6 md:col-span-2">
-          <h2 className="text-xl font-bold text-gray-900">My Booking Assets</h2>
-          {bookingListings.length === 0 ? (
-            <p className="text-gray-600 mt-3">No booking assets yet.</p>
-          ) : (
-            <div className="mt-3 grid md:grid-cols-2 gap-3">
-              {bookingListings.map((b) => (
-                <div key={b.id} className="border border-gray-200 rounded-lg px-3 py-2">
-                  <p className="font-semibold text-gray-900">{b.title}</p>
-                  <p className="text-sm text-gray-500">{b.kind} · {b.city ?? "-"} · {b.currency} {b.pricePerDay}</p>
-                </div>
-              ))}
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Services & listings</p>
+              <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Build your Zota Business catalog</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                Publish service offers, bookable inventory, and visual proof so customers can discover, trust, and book you faster.
+              </p>
             </div>
-          )}
+            <button className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => void Promise.all([loadServices(), loadBookingListings()])}>
+              Refresh catalog
+            </button>
+          </div>
+        </section>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+          <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Service publishing</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Create a service listing</h2>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                <option value="">Select category</option>
+                {physicalCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={pricingType} onChange={(e) => setPricingType(e.target.value)}>
+                <option value="from">From pricing</option>
+                <option value="fixed">Fixed pricing</option>
+                <option value="quote">Quote only</option>
+              </select>
+              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none md:col-span-2" value={serviceTitle} onChange={(e) => setServiceTitle(e.target.value)} placeholder="Service title" />
+              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={priceFrom} onChange={(e) => setPriceFrom(Number(e.target.value))} placeholder="Price" />
+              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Add a cover image and up to five gallery images to improve trust and conversion.
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
+                <label className="text-sm font-semibold text-slate-900">Cover image</label>
+                <input
+                  className="mt-3 block w-full text-sm text-slate-600"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setStatus("Uploading cover image...");
+                    setTone("info");
+                    void uploadServiceImage(file)
+                      .then((url) => {
+                        setCoverImageUrl(url);
+                        setStatus("Cover uploaded.");
+                        setTone("success");
+                      })
+                      .catch((err: unknown) => {
+                        setStatus(err instanceof Error ? err.message : "Cover upload failed");
+                        setTone("error");
+                      });
+                  }}
+                />
+                {coverImageUrl && <p className="mt-3 truncate text-xs text-emerald-700">{coverImageUrl}</p>}
+              </div>
+
+              <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
+                <label className="text-sm font-semibold text-slate-900">Gallery images</label>
+                <input
+                  className="mt-3 block w-full text-sm text-slate-600"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []).slice(0, 5);
+                    if (!files.length) return;
+                    setStatus("Uploading gallery...");
+                    setTone("info");
+                    void Promise.all(files.map((f) => uploadServiceImage(f)))
+                      .then((urls) => {
+                        setGalleryImageUrls(urls.slice(0, 5));
+                        setStatus("Gallery uploaded.");
+                        setTone("success");
+                      })
+                      .catch((err: unknown) => {
+                        setStatus(err instanceof Error ? err.message : "Gallery upload failed");
+                        setTone("error");
+                      });
+                  }}
+                />
+                {galleryImageUrls.length > 0 && <p className="mt-3 text-xs text-emerald-700">{galleryImageUrls.length} gallery image(s) ready</p>}
+              </div>
+            </div>
+
+            <button className="mt-5 rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white" onClick={createService}>Publish service</button>
+          </section>
+
+          <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Bookable inventory</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Create booking assets</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Hotels, halls, rentals, and other reserve-now inventory should live here.</p>
+
+            <div className="mt-4 grid gap-3">
+              <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL")}>
+                <option value="HOTEL">Hotel</option>
+                <option value="CAR">Car Rental</option>
+                <option value="HALL">Event Hall</option>
+              </select>
+              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingTitle} onChange={(e) => setBookingTitle(e.target.value)} placeholder="Listing title" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingCity} onChange={(e) => setBookingCity(e.target.value)} placeholder="City" />
+                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={bookingPrice} onChange={(e) => setBookingPrice(Number(e.target.value))} placeholder="Price per day" />
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button className="rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white" onClick={createBookingListing}>Create asset</button>
+              <button className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700" onClick={loadBookingListings}>Refresh assets</button>
+            </div>
+          </section>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Published services</p>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Service catalog</h2>
+              </div>
+              <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">{services.length} live</span>
+            </div>
+            <div className="mt-4 space-y-3">
+              {services.length === 0 ? (
+                <div className="rounded-[22px] bg-slate-50 p-4 text-sm leading-6 text-slate-500">No services yet. Publish one to start receiving direct marketplace leads.</div>
+              ) : (
+                services.map((s) => (
+                  <article key={s.id} className="rounded-[24px] border border-slate-200 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-black tracking-[-0.03em] text-slate-950">{s.title}</h3>
+                        <p className="mt-1 text-sm text-slate-500">{s.category.name}</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">
+                        {s.pricingType}{s.priceFrom ? ` · NGN ${s.priceFrom.toLocaleString()}` : ""}
+                      </span>
+                    </div>
+                    {s.coverImageUrl && <p className="mt-3 truncate text-xs text-slate-500">Cover: {s.coverImageUrl}</p>}
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Reserve-now inventory</p>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Booking assets</h2>
+              </div>
+              <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">{bookingListings.length} live</span>
+            </div>
+            <div className="mt-4 space-y-3">
+              {bookingListings.length === 0 ? (
+                <div className="rounded-[22px] bg-slate-50 p-4 text-sm leading-6 text-slate-500">No booking assets yet. Add one so customers can book directly from search results.</div>
+              ) : (
+                bookingListings.map((b) => (
+                  <article key={b.id} className="rounded-[24px] border border-slate-200 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-black tracking-[-0.03em] text-slate-950">{b.title}</h3>
+                        <p className="mt-1 text-sm text-slate-500">{b.kind} · {b.city ?? "-"}</p>
+                      </div>
+                      <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-700">
+                        {b.currency} {b.pricePerDay.toLocaleString()}
+                      </span>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
         </div>
       </div>
       <StatusToast message={status} tone={tone} />

@@ -92,7 +92,7 @@ export default function ConsumerDashboardPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [city, setCity] = useState("Lagos");
-  const [issue, setIssue] = useState("My car broke down and I need urgent mechanic support.");
+  const [issue, setIssue] = useState("Find me a trusted mechanic near Paradise 2 Extension today.");
   const [urgency, setUrgency] = useState<"normal" | "urgent">("urgent");
 
   const [lat, setLat] = useState<number | null>(null);
@@ -115,7 +115,80 @@ export default function ConsumerDashboardPage() {
     [categories],
   );
   const featuredCategories = useMemo(() => physicalCategories.slice(0, 8), [physicalCategories]);
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c.id === selectedCategoryId) ?? null,
+    [categories, selectedCategoryId],
+  );
   const locationReady = lat != null && lng != null;
+  const promptIdeas = useMemo(
+    () => [
+      "Find me a verified plumber near me",
+      "Book a quiet hotel in Lagos for tomorrow",
+      "I need a hall for 200 guests this weekend",
+      "Get a mechanic to Paradise 2 Extension urgently",
+    ],
+    [],
+  );
+  const recommendationCards = useMemo(
+    () =>
+      (nearby.length
+        ? nearby.slice(0, 6).map((vendor) => ({
+            id: vendor.id,
+            title: vendor.businessName ?? "Verified provider",
+            subtitle: vendor.city ?? city,
+            meta: `${vendor.distanceKm}km away`,
+            badge: vendor.isOnline ? "Verified now" : "Verified",
+            accent: "from-emerald-500/85 via-emerald-400/70 to-sky-400/75",
+            rating: reviewMap[vendor.id]?.averageRating.toFixed(1) ?? "4.8",
+          }))
+        : [
+            { id: "lagos", title: "Premium hotel stays", subtitle: city, meta: "Booked by verified hosts", badge: "Top rated", accent: "from-indigo-600/85 via-sky-500/75 to-cyan-400/80", rating: "4.9" },
+            { id: "dispatch", title: "Trusted home services", subtitle: "Mechanics, cleaning, electrical", meta: "Fast local response", badge: "Verified", accent: "from-emerald-600/85 via-teal-500/70 to-lime-400/80", rating: "4.8" },
+            { id: "events", title: "Business event halls", subtitle: "Meetings, launches, conferences", meta: "Flexible booking", badge: "Curated", accent: "from-amber-500/85 via-orange-500/70 to-rose-400/70", rating: "4.7" },
+          ]),
+    [city, nearby, reviewMap],
+  );
+  const experienceCards = useMemo(
+    () =>
+      (bookingResults.length
+        ? bookingResults.slice(0, 6).map((listing) => ({
+            id: listing.id,
+            title: listing.title,
+            subtitle: listing.city ?? city,
+            price: `${listing.currency} ${listing.pricePerDay.toLocaleString()}`,
+            type: listing.kind,
+          }))
+        : [
+            { id: "stay", title: "Quiet business hotels", subtitle: city, price: "From NGN 75,000", type: "HOTEL" },
+            { id: "ride", title: "Reliable airport transfers", subtitle: city, price: "From NGN 25,000", type: "CAR" },
+            { id: "hall", title: "Event-ready spaces", subtitle: city, price: "From NGN 180,000", type: "HALL" },
+          ]),
+    [bookingResults, city],
+  );
+
+  async function smartSearch() {
+    const query = issue.toLowerCase();
+    const bookingIntent = ["hotel", "stay", "flight", "car rental", "rent a car", "hall", "event", "booking"].some((term) =>
+      query.includes(term),
+    );
+
+    if (bookingIntent) {
+      await searchBookings();
+      return;
+    }
+
+    if (!selectedCategoryId && physicalCategories[0]) {
+      setSelectedCategoryId(physicalCategories[0].id);
+    }
+
+    if (!locationReady) {
+      setTone("info");
+      setStatus("Allow location or use the nearby card so Zota can find the right provider.");
+      return;
+    }
+
+    await searchNearby();
+  }
 
   async function bootstrap() {
     setTone("info");
@@ -322,251 +395,406 @@ export default function ConsumerDashboardPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(129,140,248,0.22),_transparent_38%),linear-gradient(145deg,#0f172a_0%,#172554_48%,#1e1b4b_100%)] p-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.32em] text-indigo-100">Zota Concierge</p>
-          <h1 className="mt-3 max-w-2xl text-3xl font-black leading-tight tracking-[-0.03em] sm:text-4xl">
-            Ask for exactly what you need. Zota routes services, bookings, and chats from one search flow.
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm text-slate-200 sm:text-base">
-            Signed in as {user?.email ?? user?.phone}. Start with a clear request, pick a category only when you need to narrow it, and keep the rest of the screen focused.
-          </p>
+      <div className="mx-auto max-w-6xl px-4 pb-6 pt-5 sm:px-6">
+        <section className="rounded-[34px] bg-white">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Zota Explore</p>
+              <h1 className="mt-3 text-5xl font-black leading-none tracking-[-0.06em] text-emerald-950">
+                Where to?
+              </h1>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-slate-500">
+                One intelligent search for verified services, bookings, local dispatch, realtime support, and wallet-ready checkout.
+              </p>
+            </div>
+            <Link
+              href="/notifications"
+              aria-label="Notifications"
+              className="mt-2 inline-flex h-12 w-12 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-950"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="1.8">
+                <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5" />
+                <path d="M10 17a2 2 0 0 0 4 0" />
+              </svg>
+            </Link>
+          </div>
 
-          <div className="mt-5 rounded-[26px] border border-white/10 bg-white/8 p-3 backdrop-blur">
-            <div className="rounded-[22px] border border-white/10 bg-white px-4 py-4 text-slate-900 shadow-[0_20px_40px_rgba(15,23,42,0.14)]">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
-                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                Ask Zota
+          <div className="mt-8 rounded-[34px] border-2 border-emerald-200 bg-white px-5 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+            <div className="flex items-start gap-4">
+              <div className="mt-1 text-emerald-950">
+                <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="11" cy="11" r="6.5" />
+                  <path d="M16 16 21 21" />
+                </svg>
               </div>
-              <textarea
-                className="mt-3 min-h-[96px] w-full resize-none border-0 bg-transparent p-0 text-base leading-7 text-slate-900 outline-none placeholder:text-slate-400"
-                value={issue}
-                onChange={(e) => setIssue(e.target.value)}
-                placeholder="Describe what you need in plain language. Example: I need a trusted electrician in Lekki this evening, or find me a calm business hotel in Abuja for Friday."
-              />
-              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_180px_140px]">
-                <input
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="City"
+              <div className="min-w-0 flex-1">
+                <textarea
+                  className="min-h-[54px] w-full resize-none border-0 bg-transparent p-0 text-[1.05rem] leading-7 text-slate-800 outline-none placeholder:text-slate-400"
+                  value={issue}
+                  onChange={(e) => setIssue(e.target.value)}
+                  placeholder="Ask for hotels, dispatch, business services, products, halls, or live support..."
                 />
-                <select
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white"
-                  value={selectedCategoryId}
-                  onChange={(e) => setSelectedCategoryId(e.target.value)}
-                >
-                  <option value="">Any category</option>
-                  {physicalCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white"
-                  value={urgency}
-                  onChange={(e) => setUrgency(e.target.value as "normal" | "urgent")}
-                >
-                  <option value="normal">Normal</option>
-                  <option value="urgent">Urgent</option>
-                </select>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 outline-none"
+                    value={city}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      setBookingCity(e.target.value);
+                    }}
+                    placeholder="City"
+                  />
+                  <select
+                    className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 outline-none"
+                    value={urgency}
+                    onChange={(e) => setUrgency(e.target.value as "normal" | "urgent")}
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                  <button
+                    className="rounded-full bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
+                    onClick={smartSearch}
+                  >
+                    Search
+                  </button>
+                </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {promptIdeas.map((prompt) => (
+              <button
+                key={prompt}
+                onClick={() => setIssue(prompt)}
+                className="whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-7 rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,#f5fbf8_0%,#eefaf7_100%)] p-4">
+            <button
+              className="flex w-full items-center justify-between gap-4 rounded-[24px] bg-white px-4 py-4 text-left shadow-[0_16px_34px_rgba(15,23,42,0.08)]"
+              onClick={detectMyLocation}
+            >
+              <div className="flex items-center gap-4">
+                <div className="grid h-16 w-16 place-items-center rounded-2xl bg-[radial-gradient(circle_at_center,_#3b82f6_0,_#93c5fd_20%,_#dbeafe_20%,_#dbeafe_37%,_#eff6ff_37%,_#eff6ff_100%)]">
+                  <div className="h-5 w-5 rounded-full bg-blue-600 ring-8 ring-blue-200/70" />
+                </div>
+                <div>
+                  <p className="text-2xl font-black tracking-[-0.03em] text-emerald-950">Explore nearby</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {locationReady ? "Location connected for smart local matching" : "Allow location access"}
+                  </p>
+                </div>
+              </div>
+              <span className="text-4xl leading-none text-emerald-950">›</span>
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Search context</p>
+                  <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">One search, every engine</h2>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">
+                  {selectedCategory?.name ?? "Discovery"}
+                </span>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
                 {featuredCategories.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setSelectedCategoryId(c.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${
                       selectedCategoryId === c.id
-                        ? "border-indigo-600 bg-indigo-600 text-white"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
+                        ? "bg-emerald-950 text-white"
+                        : "border border-slate-200 bg-slate-50 text-slate-700 hover:border-emerald-200 hover:text-emerald-900"
                     }`}
                   >
                     {c.name}
                   </button>
                 ))}
               </div>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                  onClick={searchNearby}
-                >
-                  Find verified pros
-                </button>
-                <button
-                  className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                  onClick={() => requestMatch()}
-                >
-                  Auto-match now
-                </button>
-                <button
-                  className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                  onClick={detectMyLocation}
-                >
-                  {locationReady ? "Refresh my location" : "Use my location"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-3 text-sm">
-            <span className={`rounded-full border px-3 py-1.5 font-medium ${locationReady ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-100" : "border-white/15 bg-white/10 text-slate-200"}`}>
-              {locationReady ? "Location ready for nearby dispatch" : "Location not yet set"}
-            </span>
-            <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 font-medium text-slate-200">
-              Radius {radiusKm}km
-            </span>
-            {activeRequestId && (
-              <span className="rounded-full border border-indigo-300/30 bg-indigo-300/15 px-3 py-1.5 font-medium text-indigo-100">
-                Live request {activeRequestId.slice(0, 8)}
-              </span>
-            )}
-          </div>
-        </section>
-
-        <section className="mt-5 grid gap-4 md:grid-cols-3">
-          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Service dispatch</p>
-            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">Nearby help, minus the noise.</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Ask in plain language, shortlist verified vendors, and turn the best match into a live request.
-            </p>
-          </article>
-          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Booking engine</p>
-            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">Hotels, halls, cars, flights.</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Keep structured booking search available, but cleaner and secondary to the main concierge input.
-            </p>
-          </article>
-          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Realtime support</p>
-            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">Messages and calls stay one tap away.</h2>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link href="/messages" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
-                Open inbox
-              </Link>
-              <Link href="/requests" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
-                Track requests
-              </Link>
-            </div>
-          </article>
-        </section>
-
-        <div className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Verified vendors nearby</p>
-                <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Clean shortlist, not clutter.</h2>
-              </div>
-              <div className="flex gap-2">
-                <button className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={detectMyLocation}>
-                  {locationReady ? "Refresh location" : "Set location"}
-                </button>
-                <button className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700" onClick={searchNearby}>
-                  Search
-                </button>
+              <div className="mt-4 rounded-[22px] bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">How Zota will interpret your prompt</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Write naturally. Zota routes intent into booking, dispatch, nearby discovery, messages, calls, or checkout without forcing you through separate forms.
+                </p>
               </div>
             </div>
 
-            {nearby.length === 0 ? (
-              <div className="mt-4 rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
-                Once you search, verified vendors will appear here with distance, rating, and a direct path to request or message them.
-              </div>
-            ) : (
+            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Quick actions</p>
+              <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Move faster</h2>
               <div className="mt-4 space-y-3">
-                {nearby.map((v) => (
-                  <article key={v.id} className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-bold text-slate-900">{v.businessName ?? "Unnamed Vendor"}</h3>
-                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${v.isOnline ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
-                            {v.isOnline ? "Online" : "Offline"}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm text-slate-600">
-                          {v.city ?? city} · {v.distanceKm}km away · covers {v.coverageKm}km
-                        </p>
-                        <p className="mt-1 text-sm text-indigo-700">
-                          {reviewMap[v.id] ? reviewMap[v.id].averageRating.toFixed(1) : "0.0"} rating · {reviewMap[v.id]?.totalReviews ?? 0} review(s)
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white" onClick={() => requestMatch(v.id)}>
-                          Request vendor
-                        </button>
-                        <Link className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700" href={`/messages?vendorId=${encodeURIComponent(v.id)}`}>
-                          Message
-                        </Link>
-                      </div>
+                <button className="flex w-full items-center justify-between rounded-[22px] border border-slate-200 px-4 py-4 text-left" onClick={() => requestMatch()}>
+                  <div>
+                    <p className="font-bold text-slate-900">Auto-match request</p>
+                    <p className="mt-1 text-sm text-slate-500">Dispatch this request to the best verified provider nearby.</p>
+                  </div>
+                  <span className="text-2xl text-emerald-950">→</span>
+                </button>
+                <button className="flex w-full items-center justify-between rounded-[22px] border border-slate-200 px-4 py-4 text-left" onClick={searchBookings}>
+                  <div>
+                    <p className="font-bold text-slate-900">Search bookings</p>
+                    <p className="mt-1 text-sm text-slate-500">Hotels, halls, transport, and other reserve-now inventory.</p>
+                  </div>
+                  <span className="text-2xl text-emerald-950">→</span>
+                </button>
+                <Link href="/messages" className="flex items-center justify-between rounded-[22px] border border-slate-200 px-4 py-4">
+                  <div>
+                    <p className="font-bold text-slate-900">Open messages and calls</p>
+                    <p className="mt-1 text-sm text-slate-500">Continue conversations, negotiate, and place calls in-app.</p>
+                  </div>
+                  <span className="text-2xl text-emerald-950">→</span>
+                </Link>
+                {activeRequestId && (
+                  <Link href="/requests" className="flex items-center justify-between rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-4">
+                    <div>
+                      <p className="font-bold text-emerald-950">Track active request</p>
+                      <p className="mt-1 text-sm text-emerald-700">Request {activeRequestId.slice(0, 8)} is currently live.</p>
                     </div>
-                  </article>
-                ))}
+                    <span className="text-2xl text-emerald-950">→</span>
+                  </Link>
+                )}
               </div>
-            )}
-          </section>
+            </div>
+          </div>
+        </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Booking search</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Structured booking, cleaner surface.</h2>
-            <div className="mt-4 grid gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL" | "FLIGHT")}>
-                  <option value="HOTEL">Hotels</option>
-                  <option value="CAR">Car Rentals</option>
-                  <option value="HALL">Event Halls</option>
-                  <option value="FLIGHT">Flights</option>
-                </select>
-                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none" value={bookingCity} onChange={(e) => setBookingCity(e.target.value)} placeholder="City" />
+        <section className="mt-10">
+          <div className="flex items-end justify-between gap-3">
+            <h2 className="text-3xl font-black tracking-[-0.05em] text-slate-950">You might like</h2>
+            <Link href="/bookings" className="text-base font-semibold text-emerald-900 underline-offset-4 hover:underline">
+              View all
+            </Link>
+          </div>
+          <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
+            {recommendationCards.map((card) => (
+              <article
+                key={card.id}
+                className={`relative min-h-[320px] min-w-[300px] overflow-hidden rounded-[28px] bg-gradient-to-br ${card.accent} p-5 text-white shadow-[0_24px_45px_rgba(15,23,42,0.18)]`}
+              >
+                <div className="absolute left-5 top-5 rounded-2xl bg-[#f9f34c] px-3 py-2 text-sm font-black text-emerald-950 shadow">
+                  ★ {card.rating}
+                </div>
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.06)_0%,rgba(15,23,42,0.2)_36%,rgba(15,23,42,0.8)_100%)]" />
+                <div className="relative flex h-full flex-col justify-end">
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-white/80">{card.badge}</p>
+                  <h3 className="mt-3 text-4xl font-black tracking-[-0.05em]">{card.title}</h3>
+                  <p className="mt-2 text-2xl font-semibold">{card.subtitle}</p>
+                  <p className="mt-1 text-sm text-white/80">{card.meta}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-3xl font-black tracking-[-0.05em] text-emerald-950">Must-do picks in {city}</h2>
+              <p className="mt-1 text-sm text-slate-500">Services, stays, and fast booking paths from one feed.</p>
+            </div>
+            <Link href="/requests" className="text-base font-semibold text-emerald-900 underline-offset-4 hover:underline">
+              View all
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {experienceCards.map((item) => (
+              <article key={item.id} className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+                <div className="h-40 rounded-[22px] bg-[linear-gradient(135deg,#dbeafe_0%,#ecfeff_45%,#dcfce7_100%)]" />
+                <div className="mt-4 flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">
+                    {item.type}
+                  </span>
+                  <span className="rounded-full border border-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900">
+                    Verified
+                  </span>
+                </div>
+                <h3 className="mt-4 text-xl font-black tracking-[-0.03em] text-slate-950">{item.title}</h3>
+                <p className="mt-1 text-sm text-slate-500">{item.subtitle}</p>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Starting from</p>
+                    <p className="text-lg font-bold text-slate-900">{item.price}</p>
+                  </div>
+                  <button
+                    className="rounded-full bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
+                    onClick={item.type === "HOTEL" || item.type === "CAR" || item.type === "HALL" || item.type === "FLIGHT" ? searchBookings : smartSearch}
+                  >
+                    Explore
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Best nearby</p>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Verified local matches</h2>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
-                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 outline-none" type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
-              </div>
-              <button className="rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700" onClick={searchBookings}>
-                Search {bookingKind.toLowerCase()} availability
+              <button
+                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+                onClick={searchNearby}
+              >
+                Refresh
               </button>
             </div>
+            <div className="mt-4 space-y-3">
+              {nearby.length === 0 ? (
+                <div className="rounded-[22px] bg-slate-50 p-4">
+                  <p className="font-semibold text-slate-900">No nearby providers loaded yet</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Turn on location and search from the main bar. Zota will find verified providers near your current area.
+                  </p>
+                </div>
+              ) : (
+                nearby.slice(0, 4).map((vendor) => {
+                  const review = reviewMap[vendor.id];
+                  return (
+                    <article key={vendor.id} className="rounded-[24px] border border-slate-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-lg font-black tracking-[-0.03em] text-slate-950">
+                              {vendor.businessName ?? "Verified provider"}
+                            </h3>
+                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">
+                              {vendor.isOnline ? "Online" : "Verified"}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {vendor.city ?? city} · {vendor.distanceKm}km away · coverage {vendor.coverageKm}km
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-50 px-3 py-2 text-right">
+                          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Rating</p>
+                          <p className="text-sm font-black text-slate-950">
+                            {review?.averageRating.toFixed(1) ?? "4.8"} · {review?.totalReviews ?? 0}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Link
+                          href={`/messages?vendorId=${vendor.id}&message=${encodeURIComponent(issue)}`}
+                          className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+                        >
+                          Message
+                        </Link>
+                        <button
+                          className="rounded-full bg-emerald-950 px-4 py-2 text-sm font-semibold text-white"
+                          onClick={() => requestMatch(vendor.id)}
+                        >
+                          Request this vendor
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
-            {bookingResults.length === 0 ? (
-              <div className="mt-4 rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
-                Booking results stay tucked away until you ask for them. This keeps the dashboard focused on the main search action.
+          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Book and reserve</p>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Booking snapshot</h2>
               </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {bookingResults.map((b) => (
-                  <article key={b.id} className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900">{b.title}</h3>
-                        <p className="mt-1 text-sm text-slate-600">{b.kind} · {b.city ?? "-"} · {b.currency} {b.pricePerDay}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                          disabled={bookingBusyId === `${b.id}:CARD`}
-                          onClick={() => reserveBooking(b.id, "CARD")}
-                        >
-                          {bookingBusyId === `${b.id}:CARD` ? "Processing..." : "Pay with card"}
-                        </button>
-                        <button
-                          className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-60"
-                          disabled={bookingBusyId === `${b.id}:WALLET`}
-                          onClick={() => reserveBooking(b.id, "WALLET")}
-                        >
-                          {bookingBusyId === `${b.id}:WALLET` ? "Processing..." : "Use wallet"}
-                        </button>
-                      </div>
+              <select
+                className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 outline-none"
+                value={bookingKind}
+                onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL" | "FLIGHT")}
+              >
+                <option value="HOTEL">Hotels</option>
+                <option value="CAR">Cars</option>
+                <option value="HALL">Halls</option>
+                <option value="FLIGHT">Flights</option>
+              </select>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <input
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none"
+                value={bookingCity}
+                onChange={(e) => setBookingCity(e.target.value)}
+                placeholder="Booking city"
+              />
+              <input
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none"
+                type="number"
+                value={radiusKm}
+                onChange={(e) => setRadiusKm(Number(e.target.value))}
+                placeholder="Nearby radius"
+              />
+              <input
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none"
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+              />
+              <input
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none"
+                type="datetime-local"
+                value={endAt}
+                onChange={(e) => setEndAt(e.target.value)}
+              />
+            </div>
+            <button className="mt-4 rounded-full bg-emerald-950 px-4 py-2 text-sm font-semibold text-white" onClick={searchBookings}>
+              Refresh inventory
+            </button>
+            <div className="mt-4 space-y-3">
+              {(bookingResults.length ? bookingResults.slice(0, 3) : []).map((listing) => (
+                <article key={listing.id} className="rounded-[24px] border border-slate-200 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-black tracking-[-0.03em] text-slate-950">{listing.title}</h3>
+                      <p className="mt-1 text-sm text-slate-500">{listing.city ?? city} · {listing.kind}</p>
                     </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+                    <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-700">
+                      {listing.currency} {listing.pricePerDay.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                      disabled={bookingBusyId === `${listing.id}:CARD`}
+                      onClick={() => reserveBooking(listing.id, "CARD")}
+                    >
+                      Pay with card
+                    </button>
+                    <button
+                      className="rounded-full bg-emerald-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      disabled={bookingBusyId === `${listing.id}:WALLET`}
+                      onClick={() => reserveBooking(listing.id, "WALLET")}
+                    >
+                      Use wallet
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {bookingResults.length === 0 && (
+                <div className="rounded-[22px] bg-slate-50 p-4">
+                  <p className="font-semibold text-slate-900">No booking results yet</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Ask for hotels, flights, halls, or rentals in the search bar and Zota will route to booking inventory automatically.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
 
       <StatusToast message={status} tone={tone} />

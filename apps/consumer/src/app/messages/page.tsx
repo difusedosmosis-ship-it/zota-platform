@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
@@ -56,6 +56,14 @@ const rtcConfig: RTCConfiguration = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
+function formatConversationTime(value?: string) {
+  if (!value) return "No activity yet";
+  const date = new Date(value);
+  const now = new Date();
+  const sameDay = now.toDateString() === date.toDateString();
+  return sameDay ? date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : date.toLocaleDateString();
+}
+
 export default function MessagesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,6 +76,7 @@ export default function MessagesPage() {
   const [selectedId, setSelectedId] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
   const [incomingCall, setIncomingCall] = useState<CallSession | null>(null);
   const [activeCall, setActiveCall] = useState<CallSession | null>(null);
 
@@ -77,6 +86,29 @@ export default function MessagesPage() {
   const pendingSignalsRef = useRef<SignalEnvelope[]>([]);
   const selectedIdRef = useRef("");
   const activeCallRef = useRef<CallSession | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  const filteredConversations = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return conversations;
+    return conversations.filter((row) => {
+      const haystack = [
+        row.vendor?.businessName,
+        row.service?.title,
+        row.service?.category.name,
+        row.messages?.[0]?.body,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [conversations, search]);
+
+  const selectedConversation = useMemo(
+    () => conversations.find((row) => row.id === selectedId) ?? null,
+    [conversations, selectedId],
+  );
 
   async function loadConversations() {
     const res = await apiGet<{ ok: boolean; conversations: Conversation[] }>("/chat/conversations");
@@ -92,7 +124,7 @@ export default function MessagesPage() {
   async function loadMessages(conversationId: string) {
     const res = await apiGet<{ ok: boolean; messages: ChatMessage[] }>(`/chat/conversations/${conversationId}/messages`);
     if (!res.ok || !res.data) return;
-    setMessages(res.data.messages);
+    setMessages(res.data!.messages);
     await apiPost(`/chat/conversations/${conversationId}/read`, {});
   }
 
@@ -326,6 +358,10 @@ export default function MessagesPage() {
   }, [activeCall]);
 
   useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -357,99 +393,181 @@ export default function MessagesPage() {
 
   return (
     <AppShell>
-      <div className="max-w-6xl mx-auto px-4 py-8 grid lg:grid-cols-[320px,1fr] gap-4">
-        <aside className="rounded-2xl border border-gray-200 bg-white p-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Zota Messages</h1>
-            <span className="text-xs text-gray-500">{conversations.length} chats</span>
-          </div>
-          <div className="mt-4 space-y-2">
-            {conversations.map((row) => (
-              <button
-                key={row.id}
-                onClick={() => setSelectedId(row.id)}
-                className={`w-full text-left rounded-xl border p-3 ${selectedId === row.id ? "border-indigo-300 bg-indigo-50" : "border-gray-200 bg-white"}`}
-              >
-                <p className="font-semibold text-gray-900">{row.vendor?.businessName ?? row.service?.title ?? "Vendor"}</p>
-                <p className="text-sm text-gray-500">{row.service?.category.name ?? "Direct chat"}</p>
-                <p className="text-sm text-gray-600 mt-1 line-clamp-1">{row.messages?.[0]?.body ?? "No messages yet."}</p>
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <section className="rounded-2xl border border-gray-200 bg-white p-4 flex flex-col min-h-[70vh]">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-200 pb-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                {conversations.find((row) => row.id === selectedId)?.vendor?.businessName ?? "Select a conversation"}
-              </h2>
-              <p className="text-sm text-gray-500">
-                {conversations.find((row) => row.id === selectedId)?.service?.title ?? "Realtime chat and calling"}
-              </p>
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <div className="grid gap-4 lg:grid-cols-[320px,1fr]">
+          <aside className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_16px_34px_rgba(15,23,42,0.06)] lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Messages & calls</p>
+                <h1 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Live inbox</h1>
+              </div>
+              <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">
+                {conversations.length} chats
+              </span>
             </div>
-            <div className="flex gap-2">
-              <button
-                disabled={!selectedId || !!activeCall}
-                onClick={() => void startCall()}
-                className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 disabled:opacity-50"
-              >
-                Audio Call
-              </button>
-              {activeCall && (
-                <button onClick={() => void endCall()} className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700">
-                  End Call
-                </button>
+
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search vendors or services"
+              className="mt-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none"
+            />
+
+            <div className="mt-4 space-y-3 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
+              {!filteredConversations.length ? (
+                <div className="rounded-[22px] bg-slate-50 p-4 text-sm leading-6 text-slate-500">
+                  No conversations yet. Start from a vendor card or request flow and your messages will appear here.
+                </div>
+              ) : (
+                filteredConversations.map((row) => {
+                  const active = selectedId === row.id;
+                  return (
+                    <button
+                      key={row.id}
+                      onClick={() => setSelectedId(row.id)}
+                      className={`w-full rounded-[22px] border p-4 text-left transition ${
+                        active ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-base font-black tracking-[-0.03em] text-slate-950">
+                            {row.vendor?.businessName ?? row.service?.title ?? "Vendor"}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                            {row.service?.category.name ?? "Direct conversation"}
+                          </p>
+                        </div>
+                        <span className="text-xs text-slate-400">{formatConversationTime(row.messages?.[0]?.createdAt)}</span>
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
+                        {row.messages?.[0]?.body ?? "No messages yet."}
+                      </p>
+                    </button>
+                  );
+                })
               )}
             </div>
-          </div>
+          </aside>
 
-          {incomingCall && (
-            <div className="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 p-3 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-emerald-900">Incoming audio call</p>
-                <p className="text-sm text-emerald-700">Conversation {incomingCall.conversationId.slice(0, 8)}</p>
+          <section className="flex min-h-[72vh] flex-col rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
+            <div className="border-b border-slate-200 pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Current thread</p>
+                  <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">
+                    {selectedConversation?.vendor?.businessName ?? "Select a conversation"}
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {selectedConversation?.service?.title ?? "Secure realtime chat and in-app audio calling"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    disabled={!selectedId || !!activeCall}
+                    onClick={() => void startCall()}
+                    className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 disabled:opacity-50"
+                  >
+                    Start audio call
+                  </button>
+                  {activeCall && (
+                    <button
+                      onClick={() => void endCall()}
+                      className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700"
+                    >
+                      End call
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => void acceptCall()} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Answer</button>
-                <button onClick={() => void declineCall()} className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-sm font-semibold text-rose-700">Decline</button>
-              </div>
-            </div>
-          )}
 
-          <div className="flex-1 overflow-y-auto py-4 space-y-3">
-            {messages.map((message) => {
-              const mine = message.senderId === myUserId;
-              return (
-                <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${mine ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-900"}`}>
-                    <p>{message.body}</p>
-                    <p className={`mt-1 text-xs ${mine ? "text-indigo-100" : "text-gray-500"}`}>{new Date(message.createdAt).toLocaleTimeString()}</p>
+              {incomingCall && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-emerald-200 bg-emerald-50 p-4">
+                  <div>
+                    <p className="font-semibold text-emerald-950">Incoming call</p>
+                    <p className="mt-1 text-sm text-emerald-700">A vendor is trying to reach you in this conversation.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => void acceptCall()} className="rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">
+                      Answer
+                    </button>
+                    <button onClick={() => void declineCall()} className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700">
+                      Decline
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-            {!messages.length && <div className="text-sm text-gray-500">Select or start a conversation to begin chatting.</div>}
-          </div>
+              )}
 
-          <div className="border-t border-gray-200 pt-3 flex gap-2">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void sendMessage();
-                }
-              }}
-              placeholder="Send a message..."
-              className="flex-1 rounded-xl border border-gray-300 px-4 py-3"
-            />
-            <button onClick={() => void sendMessage()} className="rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white">
-              Send
-            </button>
-          </div>
-        </section>
+              {activeCall && (
+                <div className="mt-4 rounded-[22px] border border-sky-200 bg-sky-50 p-4">
+                  <p className="font-semibold text-sky-950">Audio call in progress</p>
+                  <p className="mt-1 text-sm text-sky-700">Keep this screen open while you finish the conversation.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-3 overflow-y-auto py-4">
+              {!selectedConversation ? (
+                <div className="grid min-h-[360px] place-items-center rounded-[24px] bg-slate-50 p-6 text-center">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-900">No conversation selected</p>
+                    <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                      Open a provider thread from the left panel to start messaging, negotiating, or placing an in-app call.
+                    </p>
+                  </div>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="grid min-h-[360px] place-items-center rounded-[24px] bg-slate-50 p-6 text-center">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-900">This thread is ready</p>
+                    <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                      Send a message to confirm pricing, timing, availability, or delivery details.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                messages.map((message) => {
+                  const mine = message.senderId === myUserId;
+                  return (
+                    <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[82%] rounded-[24px] px-4 py-3 shadow-sm ${
+                          mine ? "bg-emerald-950 text-white" : "border border-slate-200 bg-slate-50 text-slate-900"
+                        }`}
+                      >
+                        <p className="text-sm leading-6">{message.body}</p>
+                        <p className={`mt-2 text-[11px] ${mine ? "text-emerald-100/80" : "text-slate-400"}`}>
+                          {new Date(message.createdAt).toLocaleString([], { hour: "numeric", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="border-t border-slate-200 pt-4">
+              <div className="flex gap-2 rounded-[24px] border border-slate-200 bg-slate-50 p-2">
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void sendMessage();
+                    }
+                  }}
+                  placeholder="Write a message, ask for price confirmation, or request a callback..."
+                  className="min-h-[56px] flex-1 resize-none border-0 bg-transparent px-3 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
+                />
+                <button onClick={() => void sendMessage()} className="self-end rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white">
+                  Send
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
       <StatusToast message={status} tone={tone} />
     </AppShell>

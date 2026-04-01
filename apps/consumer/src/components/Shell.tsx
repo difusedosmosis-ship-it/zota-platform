@@ -71,7 +71,7 @@ function LoginIcon() {
 type FooterItem = {
   href: string;
   label: string;
-  icon: "home" | "booking" | "track" | "wallet" | "profile";
+  icon: "home" | "nearby" | "requests" | "wallet" | "profile";
 };
 
 function HomeIcon() {
@@ -84,22 +84,20 @@ function HomeIcon() {
   );
 }
 
-function BookingIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M3 10h18" />
-      <path d="M8 3v4M16 3v4" />
-      <path d="M8 14h3M13 14h3M8 17h3" />
-    </svg>
-  );
-}
-
-function TrackIcon() {
+function NearbyIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
       <path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z" />
       <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+
+function RequestsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M8 9h8M8 13h8M8 17h5" />
     </svg>
   );
 }
@@ -125,8 +123,8 @@ function ProfileIcon() {
 
 function FooterIcon({ name }: { name: FooterItem["icon"] }) {
   if (name === "home") return <HomeIcon />;
-  if (name === "booking") return <BookingIcon />;
-  if (name === "track") return <TrackIcon />;
+  if (name === "nearby") return <NearbyIcon />;
+  if (name === "requests") return <RequestsIcon />;
   if (name === "wallet") return <WalletIcon />;
   return <ProfileIcon />;
 }
@@ -138,11 +136,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const footerItems = useMemo<FooterItem[]>(
     () => [
-      { href: "/dashboard", label: "Home", icon: "home" },
-      { href: "/bookings", label: "Booking", icon: "booking" },
-      { href: "/requests", label: "Track", icon: "track" },
+      { href: "/dashboard", label: "Explore", icon: "home" },
+      { href: "/bookings", label: "Nearby", icon: "nearby" },
+      { href: "/requests", label: "Requests", icon: "requests" },
       { href: "/wallet", label: "Wallet", icon: "wallet" },
-      { href: "/profile", label: "Profile", icon: "profile" },
+      { href: "/profile", label: "Account", icon: "profile" },
     ],
     [],
   );
@@ -165,11 +163,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             {hasSession ? (
               <>
-                <IconButton href="/notifications" label="Notifications">
-                  <BellIcon />
-                </IconButton>
                 <IconButton href="/messages" label="Messages">
                   <MessageIcon />
+                </IconButton>
+                <IconButton href="/notifications" label="Notifications">
+                  <BellIcon />
                 </IconButton>
               </>
             ) : (
@@ -192,12 +190,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <div className="mt-4 flex flex-col gap-2">
-              <MenuLink href="/dashboard" label="Home" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/bookings" label="Bookings" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/requests" label="Track Requests" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/messages" label="Messages & Calls" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/dashboard" label="Explore" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/bookings" label="Nearby" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/requests" label="Requests" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/wallet" label="Wallet" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/profile" label="Profile" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/messages" label="Messages & Calls" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/profile" label="Account" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/notifications" label="Alerts" onClick={() => setMenuOpen(false)} />
             </div>
 
