@@ -35,6 +35,7 @@ export default function VendorKycPage() {
   const [businessDocUrl, setBusinessDocUrl] = useState("");
   const [skillProofUrl, setSkillProofUrl] = useState("");
   const [selfieUrl, setSelfieUrl] = useState("");
+  const [uploading, setUploading] = useState<string | null>(null);
 
   const loadVendor = useCallback(async () => {
     setTone("info");
@@ -105,6 +106,7 @@ export default function VendorKycPage() {
 
   async function uploadKycFile(file: File, setter: (v: string) => void, label: string) {
     try {
+      setUploading(label);
       setTone("info");
       setStatus(`Uploading ${label}...`);
 
@@ -130,6 +132,8 @@ export default function VendorKycPage() {
     } catch (e: unknown) {
       setTone("error");
       setStatus(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(null);
     }
   }
 
@@ -199,38 +203,38 @@ export default function VendorKycPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                   <label className="text-sm font-semibold text-slate-900">NIN / Government ID</label>
-                  <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={idDocUrl} onChange={(e) => setIdDocUrl(e.target.value)} placeholder="Paste file URL" />
-                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
+                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" capture="environment" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setIdDocUrl, "ID document");
                   }} />
+                  <p className="mt-3 text-xs text-slate-500">{idDocUrl ? "Uploaded successfully." : uploading === "ID document" ? "Uploading..." : "Use camera or files."}</p>
                 </div>
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                   <label className="text-sm font-semibold text-slate-900">CAC / Business certificate</label>
-                  <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={businessDocUrl} onChange={(e) => setBusinessDocUrl(e.target.value)} placeholder="Paste file URL" />
                   <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setBusinessDocUrl, "Business document");
                   }} />
+                  <p className="mt-3 text-xs text-slate-500">{businessDocUrl ? "Uploaded successfully." : uploading === "Business document" ? "Uploading..." : "Upload from files."}</p>
                 </div>
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                   <label className="text-sm font-semibold text-slate-900">Skill proof / portfolio</label>
-                  <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={skillProofUrl} onChange={(e) => setSkillProofUrl(e.target.value)} placeholder="Paste file URL" />
                   <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setSkillProofUrl, "Skill proof");
                   }} />
+                  <p className="mt-3 text-xs text-slate-500">{skillProofUrl ? "Uploaded successfully." : uploading === "Skill proof" ? "Uploading..." : "Upload from files."}</p>
                 </div>
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                   <label className="text-sm font-semibold text-slate-900">Selfie (optional)</label>
-                  <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={selfieUrl} onChange={(e) => setSelfieUrl(e.target.value)} placeholder="Paste file URL" />
                   <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*" capture="user" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setSelfieUrl, "Selfie");
                   }} />
+                  <p className="mt-3 text-xs text-slate-500">{selfieUrl ? "Uploaded successfully." : uploading === "Selfie" ? "Uploading..." : "Use camera or files."}</p>
                 </div>
               </div>
             </div>

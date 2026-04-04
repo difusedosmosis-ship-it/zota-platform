@@ -32,9 +32,9 @@ body {
 }
 
 .bm-icon-btn {
-  height: 36px;
-  min-width: 36px;
-  border-radius: 999px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   display: inline-flex;
   align-items: center;
@@ -101,7 +101,7 @@ body {
   position: fixed;
   left: calc(12px + var(--safe-left));
   right: calc(12px + var(--safe-right));
-  bottom: calc(10px + var(--safe-bottom));
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
   z-index: 65;
   height: 72px;
   padding: 8px;
@@ -197,7 +197,7 @@ body {
 .bm-content {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 18px 18px 56px;
+  padding: 14px 18px 56px;
 }
 
 .bm-hero {

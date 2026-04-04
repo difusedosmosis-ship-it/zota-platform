@@ -134,15 +134,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="bm-safe-page min-h-screen w-full bg-[#f6f7f9] text-slate-900">
-      <header className="sticky top-0 z-50 border-b border-black/5 bg-white/88 backdrop-blur-xl" style={{ paddingTop: "var(--safe-top)" }}>
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-50 border-b border-black/5 bg-white/88 backdrop-blur-xl" style={{ paddingTop: "max(8px, var(--safe-top))" }}>
+        <div className="mx-auto flex h-[60px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <button aria-label="Open menu" className="bm-icon-btn" onClick={() => setMenuOpen(true)}>
               <span className="bm-hamburger" />
             </button>
             <div>
-              <ZotaLogo size={38} compact />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Zota Business</p>
+              <ZotaLogo size={36} compact showWordmark={false} />
             </div>
           </div>
 
@@ -200,7 +199,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </>
       )}
 
-      <main style={{ paddingBottom: "max(104px, calc(90px + var(--safe-bottom)))" }}>{children}</main>
+      <main style={{ paddingBottom: "max(118px, calc(96px + env(safe-area-inset-bottom, 0px)))" }}>{children}</main>
 
       <footer className="bm-mobile-footer">
         {footerItems.map((item) => {

@@ -132,6 +132,7 @@ export default function VendorDashboardPage() {
   const [activeServiceCount, setActiveServiceCount] = useState(0);
   const [bookingListingCount, setBookingListingCount] = useState(0);
   const [walletSummary, setWalletSummary] = useState<WalletSummaryResponse["summary"] | null>(null);
+  const [locationSyncedOnce, setLocationSyncedOnce] = useState(false);
 
   const activeJobs = useMemo(
     () => requests.filter((row) => ["ACCEPTED", "IN_PROGRESS"].includes(row.status)),
@@ -300,6 +301,7 @@ export default function VendorDashboardPage() {
         }
         setTone("success");
         setStatus("Vendor location synced.");
+        setLocationSyncedOnce(true);
         await refreshVendor();
       },
       () => {
@@ -367,84 +369,83 @@ export default function VendorDashboardPage() {
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_36%),linear-gradient(145deg,#0f172a_0%,#13253f_42%,#052e2b_100%)] p-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-emerald-100">Zota Business</p>
           <h1 className="mt-3 text-3xl font-black tracking-[-0.03em] sm:text-4xl">
-            Run your verified business from one clean mobile control room.
+            Business control room
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-slate-200 sm:text-base">
-            Logged in as {user?.email ?? user?.phone}. Set up your business identity, pass verification, publish services and bookable assets, then respond to customer demand as it comes in.
+            {user?.email ?? user?.phone}
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-4">
             <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Business profile</p>
-              <p className="mt-2 text-lg font-bold text-white">{vendor?.businessName ?? "Set your business"}</p>
-              <p className="mt-2 text-xs text-slate-300">{vendor?.city ?? "No city yet"} · {vendor?.coverageKm ?? 0}km coverage</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Profile</p>
+              <p className="mt-2 text-lg font-bold text-white">{vendor?.businessName ? "Ready" : "Needs setup"}</p>
+              <p className="mt-2 text-xs text-slate-300">{vendor?.businessName ?? "Add business details in Account."}</p>
             </article>
             <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Verification</p>
-              <p className="mt-2 text-lg font-bold text-white">{vendor?.kycStatus ?? "Unknown"}</p>
-              <p className="mt-2 text-xs text-slate-300">{locationReady ? "Location ready for dispatch" : "Sync location to improve dispatch"}</p>
+              <p className="mt-2 text-lg font-bold text-white">{vendor?.kycStatus === "APPROVED" ? "Approved" : "Pending"}</p>
+              <p className="mt-2 text-xs text-slate-300">{vendor?.kycStatus === "APPROVED" ? "Customers can trust this business." : "Finish account verification."}</p>
             </article>
             <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Published inventory</p>
-              <p className="mt-2 text-lg font-bold text-white">{activeServiceCount + bookingListingCount} live items</p>
-              <p className="mt-2 text-xs text-slate-300">{activeServiceCount} services · {bookingListingCount} booking assets</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Catalog</p>
+              <p className="mt-2 text-lg font-bold text-white">{activeServiceCount + bookingListingCount} live</p>
+              <p className="mt-2 text-xs text-slate-300">{activeServiceCount} services · {bookingListingCount} bookings</p>
             </article>
             <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Available balance</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Wallet</p>
               <p className="mt-2 text-lg font-bold text-white">NGN {walletSummary?.balance.toLocaleString() ?? "0"}</p>
-              <p className="mt-2 text-xs text-slate-300">{vendor?.isOnline ? "Open to new demand" : "Business currently offline"}</p>
+              <p className="mt-2 text-xs text-slate-300">{vendor?.isOnline ? "Online for requests" : "Offline"}</p>
             </article>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <button className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900" onClick={syncMyLocation}>
-              {locationReady ? "Refresh my location" : "Sync my location"}
-            </button>
+            {!locationReady && !locationSyncedOnce ? (
+              <button className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900" onClick={syncMyLocation}>
+                Sync location
+              </button>
+            ) : (
+              <span className="rounded-2xl bg-emerald-500/15 px-5 py-3 text-sm font-semibold text-emerald-50">
+                Location synced
+              </span>
+            )}
             <button className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" onClick={refreshAll}>
-              Refresh workspace
+              Refresh
             </button>
             <Link className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" href="/services">
-              Manage services
+              Catalog
             </Link>
             <Link className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" href="/messages">
-              Inbox and calls
+              Inbox
             </Link>
           </div>
         </section>
 
         <section className="mt-5 grid gap-4 md:grid-cols-3">
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Business readiness</p>
-            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{vendor?.kycStatus === "APPROVED" ? "Business is live for customer trust." : "Finish trust setup to go fully live."}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              KYC, location, and operating status determine whether you can receive and convert demand cleanly inside Zota.
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Trust</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{vendor?.kycStatus === "APPROVED" ? "Approved" : "Complete verification"}</h2>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/kyc" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
-                Open KYC
-              </Link>
-              <button className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white" onClick={syncMyLocation}>
-                {locationReady ? "Refresh location" : "Sync location"}
-              </button>
+              {vendor?.kycStatus !== "APPROVED" ? (
+                <Link href="/account" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                  Open account
+                </Link>
+              ) : (
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Verified</span>
+              )}
             </div>
           </article>
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Catalog publishing</p>
-            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{serviceCount} services, {bookingListingCount} bookable assets</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Publish what customers can discover on Zota Consumer: home services, bookings, rentals, halls, cars, hotels, and more.
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Catalog</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{serviceCount + bookingListingCount} published items</h2>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href="/services" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
-                Manage catalog
+                Open catalog
               </Link>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {activeServiceCount} currently visible to customers
-              </span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{activeServiceCount} live services</span>
             </div>
           </article>
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Demand pipeline</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Requests</p>
             <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{requestPipelineCount} request{requestPipelineCount === 1 ? "" : "s"} moving now</h2>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/messages" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
@@ -454,9 +455,6 @@ export default function VendorDashboardPage() {
                 Earnings
               </Link>
             </div>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              New offers, active jobs, completed work, messages, and calls should all move through this one business surface.
-            </p>
           </article>
         </section>
 
@@ -486,19 +484,19 @@ export default function VendorDashboardPage() {
 
           <article className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Business path</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">The full Zota Business loop</h2>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Core flow</h2>
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
               <div className="rounded-[22px] border border-slate-200 p-4">
-                <p className="font-semibold text-slate-950">1. Set up and verify</p>
-                <p className="mt-1">Create the business profile, upload CAC and skill proof, and get approved by Zota Office.</p>
+                <p className="font-semibold text-slate-950">1. Verify</p>
+                <p className="mt-1">Set up the business and pass trust checks.</p>
               </div>
               <div className="rounded-[22px] border border-slate-200 p-4">
-                <p className="font-semibold text-slate-950">2. Publish what customers can buy or book</p>
-                <p className="mt-1">List home services, cars, halls, hotels, apartments, and other bookable inventory with strong images and pricing.</p>
+                <p className="font-semibold text-slate-950">2. Publish</p>
+                <p className="mt-1">List services and booking assets customers can find.</p>
               </div>
               <div className="rounded-[22px] border border-slate-200 p-4">
-                <p className="font-semibold text-slate-950">3. Convert demand into earnings</p>
-                <p className="mt-1">Accept requests, message and call customers, complete jobs, and track the money inside the wallet.</p>
+                <p className="font-semibold text-slate-950">3. Deliver</p>
+                <p className="mt-1">Take requests, complete jobs, and track earnings.</p>
               </div>
             </div>
           </article>
