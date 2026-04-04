@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
@@ -20,10 +20,9 @@ export default function AdminKycPage() {
   const [status, setStatus] = useState("Loading queue...");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [submissions, setSubmissions] = useState<KycSubmission[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const loadQueue = useCallback(async () => {
-    const session = requireRole(router, "ADMIN");
-    if (!session) return;
     setTone("info");
     const res = await apiGet<KycListResponse>("/admin/kyc/submissions");
     if (!res.ok || !res.data) {
@@ -33,22 +32,28 @@ export default function AdminKycPage() {
     setSubmissions(res.data.submissions);
     setTone("success");
     setStatus(`Loaded ${res.data.submissions.length} submission(s).`);
-  }, [router]);
+  }, []);
 
   useEffect(() => {
-    const session = requireRole(router, "ADMIN");
-    if (!session) return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      void loadQueue();
+      void (async () => {
+        const session = await requireRole(router, "ADMIN");
+        if (!session || cancelled) return;
+        await loadQueue();
+      })();
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [router, loadQueue]);
 
   async function approve(id: string) {
-    const session = requireRole(router, "ADMIN");
-    if (!session) return;
+    setBusyId(`approve:${id}`);
     setTone("info");
     const res = await apiPost<{ ok: boolean }>(`/admin/kyc/${id}/approve`, { note: "Approved by admin" });
+    setBusyId(null);
     if (!res.ok) {
       setTone("error");
       return setStatus(`Failed: ${res.error}`);
@@ -59,10 +64,10 @@ export default function AdminKycPage() {
   }
 
   async function reject(id: string) {
-    const session = requireRole(router, "ADMIN");
-    if (!session) return;
+    setBusyId(`reject:${id}`);
     setTone("info");
     const res = await apiPost<{ ok: boolean }>(`/admin/kyc/${id}/reject`, { note: "Rejected - re-upload docs" });
+    setBusyId(null);
     if (!res.ok) {
       setTone("error");
       return setStatus(`Failed: ${res.error}`);
@@ -72,26 +77,97 @@ export default function AdminKycPage() {
     await loadQueue();
   }
 
+  const grouped = useMemo(() => ({
+    pending: submissions.filter((s) => s.status === "PENDING" || s.status === "UNDER_REVIEW"),
+    reviewed: submissions.filter((s) => s.status !== "PENDING" && s.status !== "UNDER_REVIEW"),
+  }), [submissions]);
+
   return (
     <AppShell>
-      <section className="bm-card bm-rise-1">
-        <h2>KYC Queue</h2>
-        <div className="bm-row">
-          <button className="bm-btn bm-btn-primary" onClick={loadQueue}>Refresh queue</button>
-        </div>
-        <ul className="bm-list">
-          {submissions.map((s) => (
-            <li key={s.id}>
-              <strong>{s.vendor.businessName ?? "Unnamed Vendor"}</strong> ({s.vendor.user.email ?? "no-email"}) | {s.status}
-              <div className="bm-row" style={{ marginTop: 8 }}>
-                <button className="bm-btn bm-btn-success" onClick={() => approve(s.id)}>Approve</button>
-                <button className="bm-btn bm-btn-warn" onClick={() => reject(s.id)}>Reject</button>
+      <div className="grid gap-5">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">KYC Office</p>
+              <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] text-slate-950">Review business verification submissions</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                Approve or reject businesses before they are allowed to operate across the marketplace. This queue is the trust gate for Zota Business.
+              </p>
+            </div>
+            <button className="bm-btn bm-btn-primary" onClick={loadQueue}>Refresh queue</button>
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2">
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Needs action</p>
+            <p className="mt-3 text-3xl font-black tracking-[-0.05em] text-slate-950">{grouped.pending.length}</p>
+            <p className="mt-2 text-sm text-slate-500">Submissions waiting for review.</p>
+          </article>
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Reviewed</p>
+            <p className="mt-3 text-3xl font-black tracking-[-0.05em] text-slate-950">{grouped.reviewed.length}</p>
+            <p className="mt-2 text-sm text-slate-500">Approved and rejected records already processed.</p>
+          </article>
+        </section>
+
+        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Pending queue</p>
+          <h3 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-950">Businesses waiting for trust approval</h3>
+          <div className="mt-4 space-y-3">
+            {grouped.pending.length === 0 ? (
+              <div className="rounded-[22px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">
+                No pending KYC submissions right now.
               </div>
-            </li>
-          ))}
-        </ul>
-        <StatusToast message={status} tone={tone} />
-      </section>
+            ) : (
+              grouped.pending.map((s) => (
+                <article key={s.id} className="rounded-[22px] border border-slate-200 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-semibold text-slate-950">{s.vendor.businessName ?? "Unnamed business"}</p>
+                      <p className="mt-1 text-sm text-slate-500">{s.vendor.user.email ?? "no-email"}</p>
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{s.status}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button className="bm-btn bm-btn-success" disabled={busyId === `approve:${s.id}`} onClick={() => approve(s.id)}>
+                        {busyId === `approve:${s.id}` ? "Approving..." : "Approve"}
+                      </button>
+                      <button className="bm-btn bm-btn-warn" disabled={busyId === `reject:${s.id}`} onClick={() => reject(s.id)}>
+                        {busyId === `reject:${s.id}` ? "Rejecting..." : "Reject"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Reviewed history</p>
+          <div className="mt-4 space-y-3">
+            {grouped.reviewed.length === 0 ? (
+              <p className="text-sm text-slate-500">No reviewed submissions yet.</p>
+            ) : (
+              grouped.reviewed.map((s) => (
+                <article key={s.id} className="rounded-[18px] border border-slate-200 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-950">{s.vendor.businessName ?? "Unnamed business"}</p>
+                      <p className="mt-1 text-sm text-slate-500">{s.vendor.user.email ?? "no-email"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-slate-900">{s.status}</p>
+                      {s.reviewerNote && <p className="mt-1 text-xs text-slate-400">{s.reviewerNote}</p>}
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+      <StatusToast message={status} tone={tone} />
     </AppShell>
   );
 }

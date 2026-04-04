@@ -77,6 +77,32 @@ type RequestUpdateResponse = {
   request: VendorRequest;
 };
 
+type ServicesResponse = {
+  ok: boolean;
+  services: Array<{
+    id: string;
+    isActive?: boolean;
+  }>;
+};
+
+type BookingListingsResponse = {
+  ok: boolean;
+  listings: Array<{
+    id: string;
+    isActive: boolean;
+  }>;
+};
+
+type WalletSummaryResponse = {
+  ok: boolean;
+  summary: {
+    balance: number;
+    credits: number;
+    debits: number;
+    rows: number;
+  };
+};
+
 type WsPacket = {
   event: string;
   payload?: {
@@ -102,6 +128,10 @@ export default function VendorDashboardPage() {
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [completionAmounts, setCompletionAmounts] = useState<Record<string, number>>({});
+  const [serviceCount, setServiceCount] = useState(0);
+  const [activeServiceCount, setActiveServiceCount] = useState(0);
+  const [bookingListingCount, setBookingListingCount] = useState(0);
+  const [walletSummary, setWalletSummary] = useState<WalletSummaryResponse["summary"] | null>(null);
 
   const activeJobs = useMemo(
     () => requests.filter((row) => ["ACCEPTED", "IN_PROGRESS"].includes(row.status)),
@@ -113,6 +143,11 @@ export default function VendorDashboardPage() {
     [requests],
   );
   const locationReady = vendor?.lat != null && vendor?.lng != null;
+  const completedJobs = useMemo(
+    () => requests.filter((row) => row.status === "COMPLETED"),
+    [requests],
+  );
+  const requestPipelineCount = latestOffer ? activeJobs.length + 1 : activeJobs.length;
 
   const mergeRequest = useCallback((next: VendorRequest) => {
     setRequests((current) => {
@@ -151,13 +186,36 @@ export default function VendorDashboardPage() {
     setRequests(res.data.requests);
   }, []);
 
+  const refreshCatalog = useCallback(async () => {
+    const [servicesRes, listingsRes] = await Promise.all([
+      apiGet<ServicesResponse>("/vendor/services"),
+      apiGet<BookingListingsResponse>("/booking/vendor/listings"),
+    ]);
+
+    if (servicesRes.ok && servicesRes.data) {
+      setServiceCount(servicesRes.data.services.length);
+      setActiveServiceCount(servicesRes.data.services.filter((row) => row.isActive !== false).length);
+    }
+
+    if (listingsRes.ok && listingsRes.data) {
+      setBookingListingCount(listingsRes.data.listings.filter((row) => row.isActive).length);
+    }
+  }, []);
+
+  const refreshFinance = useCallback(async () => {
+    const res = await apiGet<WalletSummaryResponse>("/wallet/me/summary");
+    if (res.ok && res.data) {
+      setWalletSummary(res.data.summary);
+    }
+  }, []);
+
   const refreshAll = useCallback(async () => {
     setTone("info");
-    setStatus("Refreshing vendor operations...");
-    await Promise.all([refreshVendor(), refreshOffer(), refreshRequests()]);
+    setStatus("Refreshing business operations...");
+    await Promise.all([refreshVendor(), refreshOffer(), refreshRequests(), refreshCatalog(), refreshFinance()]);
     setTone("success");
-    setStatus("Vendor operations ready.");
-  }, [refreshOffer, refreshRequests, refreshVendor]);
+    setStatus("Business control room ready.");
+  }, [refreshCatalog, refreshFinance, refreshOffer, refreshRequests, refreshVendor]);
 
   useEffect(() => {
     let cancelled = false;
@@ -309,28 +367,32 @@ export default function VendorDashboardPage() {
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_36%),linear-gradient(145deg,#0f172a_0%,#13253f_42%,#052e2b_100%)] p-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.28)]">
           <p className="text-xs font-semibold uppercase tracking-[0.32em] text-emerald-100">Zota Business</p>
           <h1 className="mt-3 text-3xl font-black tracking-[-0.03em] sm:text-4xl">
-            Keep the business side clear: offers, jobs, trust, chat, and calls in one mobile control room.
+            Run your verified business from one clean mobile control room.
           </h1>
           <p className="mt-3 max-w-2xl text-sm text-slate-200 sm:text-base">
-            Logged in as {user?.email ?? user?.phone}. This version prioritizes clean actions and safe mobile spacing over the old crowded dashboard.
+            Logged in as {user?.email ?? user?.phone}. Set up your business identity, pass verification, publish services and bookable assets, then respond to customer demand as it comes in.
           </p>
 
           <div className="mt-5 grid gap-4 md:grid-cols-4">
             <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Business</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Business profile</p>
               <p className="mt-2 text-lg font-bold text-white">{vendor?.businessName ?? "Set your business"}</p>
+              <p className="mt-2 text-xs text-slate-300">{vendor?.city ?? "No city yet"} · {vendor?.coverageKm ?? 0}km coverage</p>
             </article>
             <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">KYC</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Verification</p>
               <p className="mt-2 text-lg font-bold text-white">{vendor?.kycStatus ?? "Unknown"}</p>
+              <p className="mt-2 text-xs text-slate-300">{locationReady ? "Location ready for dispatch" : "Sync location to improve dispatch"}</p>
             </article>
             <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Dispatch status</p>
-              <p className="mt-2 text-lg font-bold text-white">{vendor?.isOnline ? "Online" : "Offline"}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Published inventory</p>
+              <p className="mt-2 text-lg font-bold text-white">{activeServiceCount + bookingListingCount} live items</p>
+              <p className="mt-2 text-xs text-slate-300">{activeServiceCount} services · {bookingListingCount} booking assets</p>
             </article>
             <article className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Location</p>
-              <p className="mt-2 text-lg font-bold text-white">{locationReady ? "Synced" : "Needs sync"}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">Available balance</p>
+              <p className="mt-2 text-lg font-bold text-white">NGN {walletSummary?.balance.toLocaleString() ?? "0"}</p>
+              <p className="mt-2 text-xs text-slate-300">{vendor?.isOnline ? "Open to new demand" : "Business currently offline"}</p>
             </article>
           </div>
 
@@ -352,29 +414,92 @@ export default function VendorDashboardPage() {
 
         <section className="mt-5 grid gap-4 md:grid-cols-3">
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Offer queue</p>
-            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{latestOffer ? "A request needs your response." : "No offer waiting right now."}</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Business readiness</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{vendor?.kycStatus === "APPROVED" ? "Business is live for customer trust." : "Finish trust setup to go fully live."}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              New dispatch offers stay prominent, not buried below other controls.
+              KYC, location, and operating status determine whether you can receive and convert demand cleanly inside Zota.
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/kyc" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                Open KYC
+              </Link>
+              <button className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white" onClick={syncMyLocation}>
+                {locationReady ? "Refresh location" : "Sync location"}
+              </button>
+            </div>
           </article>
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Active jobs</p>
-            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{activeJobs.length} live {activeJobs.length === 1 ? "job" : "jobs"}</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Catalog publishing</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{serviceCount} services, {bookingListingCount} bookable assets</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Start, complete, chat, and call from a tighter operational view.
+              Publish what customers can discover on Zota Consumer: home services, bookings, rentals, halls, cars, hotels, and more.
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/services" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
+                Manage catalog
+              </Link>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {activeServiceCount} currently visible to customers
+              </span>
+            </div>
           </article>
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Customer line</p>
-            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">Calls stay one tap away.</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Demand pipeline</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.02em] text-slate-900">{requestPipelineCount} request{requestPipelineCount === 1 ? "" : "s"} moving now</h2>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/messages" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
                 Open inbox
               </Link>
-              <Link href="/kyc" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
-                Trust settings
+              <Link href="/wallet" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                Earnings
               </Link>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              New offers, active jobs, completed work, messages, and calls should all move through this one business surface.
+            </p>
+          </article>
+        </section>
+
+        <section className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+          <article className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Performance snapshot</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">What the business is doing right now</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Active jobs</p>
+                <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{activeJobs.length}</p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Completed jobs</p>
+                <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{completedJobs.length}</p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Wallet credits</p>
+                <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">NGN {walletSummary?.credits.toLocaleString() ?? "0"}</p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Wallet debits</p>
+                <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">NGN {walletSummary?.debits.toLocaleString() ?? "0"}</p>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Business path</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">The full Zota Business loop</h2>
+            <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+              <div className="rounded-[22px] border border-slate-200 p-4">
+                <p className="font-semibold text-slate-950">1. Set up and verify</p>
+                <p className="mt-1">Create the business profile, upload CAC and skill proof, and get approved by Zota Office.</p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 p-4">
+                <p className="font-semibold text-slate-950">2. Publish what customers can buy or book</p>
+                <p className="mt-1">List home services, cars, halls, hotels, apartments, and other bookable inventory with strong images and pricing.</p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 p-4">
+                <p className="font-semibold text-slate-950">3. Convert demand into earnings</p>
+                <p className="mt-1">Accept requests, message and call customers, complete jobs, and track the money inside the wallet.</p>
+              </div>
             </div>
           </article>
         </section>
@@ -382,7 +507,7 @@ export default function VendorDashboardPage() {
         <section className="mt-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Live offer queue</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Incoming requests</p>
               <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Respond fast, then move into delivery.</h2>
             </div>
             {latestOffer && (
@@ -507,8 +632,8 @@ export default function VendorDashboardPage() {
         </section>
 
         <section className="mt-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Offer history</p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Recent movement</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent movement</p>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Offer and request history</h2>
           <div className="mt-4 space-y-3">
             {offerHistory.length === 0 ? (
               <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm leading-6 text-slate-600">

@@ -26,6 +26,37 @@ type NearbyResponse = {
   vendors: NearbyVendor[];
 };
 
+type FeaturedVendor = {
+  id: string;
+  businessName: string | null;
+  city: string | null;
+  services: Array<{
+    id: string;
+    title: string;
+    coverImageUrl?: string | null;
+    category: { name: string };
+  }>;
+};
+
+type FeaturedVendorResponse = {
+  ok: boolean;
+  vendors: FeaturedVendor[];
+};
+
+type PublicBookingListing = {
+  id: string;
+  kind: "HOTEL" | "CAR" | "HALL" | "FLIGHT";
+  title: string;
+  city: string | null;
+  currency: string;
+  pricePerDay: number;
+};
+
+type PublicBookingListingResponse = {
+  ok: boolean;
+  listings: PublicBookingListing[];
+};
+
 const visualCards = [
   {
     id: "hotels",
@@ -62,6 +93,8 @@ export default function ConsumerDashboardPage() {
   const [status, setStatus] = useState("Loading explore...");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [featuredVendors, setFeaturedVendors] = useState<FeaturedVendor[]>([]);
+  const [featuredBookings, setFeaturedBookings] = useState<PublicBookingListing[]>([]);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [nearby, setNearby] = useState<NearbyVendor[]>([]);
@@ -82,16 +115,46 @@ export default function ConsumerDashboardPage() {
   );
 
   const nearbyPreview = useMemo(() => nearby.slice(0, 2), [nearby]);
+  const featuredVendorCards = useMemo(
+    () =>
+      featuredVendors.slice(0, 3).map((vendor, index) => ({
+        id: vendor.id,
+        title: vendor.businessName ?? "Verified business",
+        subtitle: vendor.services[0]?.title ?? vendor.city ?? "Business profile",
+        badge: vendor.services[0]?.category.name ?? "Business",
+        rating: ["4.9", "4.8", "4.7"][index % 3],
+        image: vendor.services[0]?.coverImageUrl || visualCards[index % visualCards.length].image,
+      })),
+    [featuredVendors],
+  );
+  const featuredBookingCards = useMemo(
+    () =>
+      featuredBookings.slice(0, 3).map((listing, index) => ({
+        id: listing.id,
+        title: listing.title,
+        subtitle: listing.city ?? "Nigeria",
+        type: listing.kind,
+        price: `${listing.currency} ${listing.pricePerDay.toLocaleString()}`,
+        image: visualCards[index % visualCards.length].image,
+      })),
+    [featuredBookings],
+  );
 
   async function bootstrap() {
     setTone("info");
     setStatus("Loading categories...");
-    const res = await apiGet<CategoriesResponse>("/categories");
-    if (!res.ok || !res.data) {
+    const [categoryRes, vendorRes, bookingRes] = await Promise.all([
+      apiGet<CategoriesResponse>("/categories"),
+      apiGet<FeaturedVendorResponse>("/vendor/featured?city=Lagos&limit=6"),
+      apiGet<PublicBookingListingResponse>("/booking/public/listings?city=Lagos&limit=6"),
+    ]);
+    if (!categoryRes.ok || !categoryRes.data) {
       setTone("error");
-      return setStatus(`Failed: ${res.error}`);
+      return setStatus(`Failed: ${categoryRes.error}`);
     }
-    setCategories(res.data.categories);
+    setCategories(categoryRes.data.categories);
+    if (vendorRes.ok && vendorRes.data) setFeaturedVendors(vendorRes.data.vendors);
+    if (bookingRes.ok && bookingRes.data) setFeaturedBookings(bookingRes.data.listings);
     setTone("success");
     setStatus("Explore ready.");
   }
@@ -253,7 +316,7 @@ export default function ConsumerDashboardPage() {
             </Link>
           </div>
           <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-            {visualCards.map((card) => (
+            {(featuredVendorCards.length ? featuredVendorCards : visualCards).map((card) => (
               <article key={card.id} className="relative min-h-[280px] min-w-[280px] overflow-hidden rounded-[28px] shadow-[0_24px_45px_rgba(15,23,42,0.18)]">
                 <img src={card.image} alt={card.title} className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08)_0%,rgba(15,23,42,0.22)_36%,rgba(15,23,42,0.82)_100%)]" />
@@ -280,13 +343,20 @@ export default function ConsumerDashboardPage() {
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {visualCards.map((item) => (
+            {(featuredBookingCards.length ? featuredBookingCards : visualCards.map((item) => ({
+              id: item.id,
+              title: item.title,
+              subtitle: item.subtitle,
+              type: item.id === "hotels" ? "HOTEL" : item.id === "services" ? "SERVICE" : "HALL",
+              price: item.id === "hotels" ? "From NGN 75,000" : item.id === "services" ? "From NGN 10,000" : "From NGN 180,000",
+              image: item.image,
+            }))).map((item) => (
               <article key={item.id} className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
                 <img src={item.image} alt={item.title} className="h-44 w-full object-cover" />
                 <div className="p-4">
                   <div className="flex items-center justify-between gap-2">
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-emerald-800">
-                      {item.id === "hotels" ? "HOTEL" : item.id === "services" ? "SERVICE" : "HALL"}
+                      {item.type}
                     </span>
                     <span className="rounded-full border border-emerald-100 px-3 py-1 text-xs font-medium text-emerald-900">
                       Verified
@@ -294,6 +364,7 @@ export default function ConsumerDashboardPage() {
                   </div>
                   <h3 className="mt-4 text-lg font-medium text-slate-950">{item.title}</h3>
                   <p className="mt-1 text-sm text-slate-500">{item.subtitle}</p>
+                  {"price" in item && <p className="mt-3 text-sm font-medium text-slate-900">{item.price}</p>}
                   <button
                     className="mt-4 rounded-full bg-emerald-950 px-4 py-2 text-sm font-medium text-white"
                     onClick={() => openAssistant(item.title)}
