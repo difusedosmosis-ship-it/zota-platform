@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Zota Vendor",
+  title: "Zota Business",
   description: "Zota by Beautiful Mind. Manage onboarding, KYC, conversations, calls, and service operations.",
 };
 

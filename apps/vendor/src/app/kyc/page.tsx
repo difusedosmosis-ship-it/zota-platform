@@ -24,8 +24,8 @@ export default function VendorKycPage() {
   const [status, setStatus] = useState("Loading...");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
 
-  const [businessName, setBusinessName] = useState("BM Vendor Ltd");
-  const [city, setCity] = useState("Lagos");
+  const [businessName, setBusinessName] = useState("");
+  const [city, setCity] = useState("");
   const [coverageKm, setCoverageKm] = useState(10);
   const [isOnline, setIsOnline] = useState(true);
   const [kycStatus, setKycStatus] = useState("-");

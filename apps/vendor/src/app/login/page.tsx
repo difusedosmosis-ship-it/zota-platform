@@ -26,8 +26,8 @@ function friendlyError(error?: string) {
 export default function VendorLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("Passw0rd!");
-  const [status, setStatus] = useState("Use your vendor email/password.");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState("Use your business email and password.");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
 
   async function signup() {
@@ -43,7 +43,7 @@ export default function VendorLoginPage() {
       role: "VENDOR",
       email: emailValue,
       password,
-      fullName: "Vendor User",
+      fullName: emailValue.split("@")[0] || "Vendor User",
     });
     if (!res.ok || !res.data) {
       setTone("error");
@@ -59,6 +59,10 @@ export default function VendorLoginPage() {
     if (!isValidEmail(emailValue)) {
       setTone("error");
       return setStatus("Enter a valid email address.");
+    }
+    if (!password.trim()) {
+      setTone("error");
+      return setStatus("Enter your password.");
     }
 
     setTone("info");
@@ -77,8 +81,8 @@ export default function VendorLoginPage() {
     <AppShell>
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-2xl font-bold text-gray-900">Vendor Login / Signup</h2>
-          <p className="text-gray-600 mt-1">Access your dashboard and manage service operations.</p>
+          <h2 className="text-2xl font-bold text-gray-900">Zota Business</h2>
+          <p className="text-gray-600 mt-1">Sign in or create a business account to manage services, bookings, and requests.</p>
           <input className="mt-4 w-full px-4 py-3 border border-gray-300 rounded-lg" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <div className="mt-4 flex gap-3">

@@ -58,7 +58,7 @@ function MessageIcon() {
   );
 }
 
-function FooterIcon({ name }: { name: "home" | "services" | "wallet" | "messages" | "kyc" }) {
+function FooterIcon({ name }: { name: "home" | "services" | "wallet" | "messages" | "account" }) {
   if (name === "home") {
     return (
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
@@ -94,6 +94,14 @@ function FooterIcon({ name }: { name: "home" | "services" | "wallet" | "messages
       </svg>
     );
   }
+  if (name === "account") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+        <circle cx="12" cy="8" r="3.5" />
+        <path d="M5 19c1.8-3.2 4.2-4.8 7-4.8s5.2 1.6 7 4.8" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
       <rect x="4" y="3" width="16" height="18" rx="2" />
@@ -105,7 +113,7 @@ function FooterIcon({ name }: { name: "home" | "services" | "wallet" | "messages
 type FooterItem = {
   href: string;
   label: string;
-  icon: "home" | "services" | "wallet" | "messages" | "kyc";
+  icon: "home" | "services" | "wallet" | "messages" | "account";
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -119,14 +127,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       { href: "/services", label: "Services", icon: "services" },
       { href: "/wallet", label: "Wallet", icon: "wallet" },
       { href: "/messages", label: "Inbox", icon: "messages" },
-      { href: "/kyc", label: "KYC", icon: "kyc" },
+      { href: "/account", label: "Account", icon: "account" },
     ],
     [],
   );
 
   return (
-    <div className="bm-safe-page min-h-screen w-full bg-white text-slate-900">
-      <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur-xl">
+    <div className="bm-safe-page min-h-screen w-full bg-[#f6f7f9] text-slate-900">
+      <header className="sticky top-0 z-50 border-b border-black/5 bg-white/88 backdrop-blur-xl" style={{ paddingTop: "var(--safe-top)" }}>
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <button aria-label="Open menu" className="bm-icon-btn" onClick={() => setMenuOpen(true)}>
@@ -134,7 +142,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <div>
               <ZotaLogo size={38} compact />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Business</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-slate-500">Zota Business</p>
             </div>
           </div>
 
@@ -144,7 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <IconButton href="/messages" label="Inbox">
                   <MessageIcon />
                 </IconButton>
-                <IconButton href="/kyc" label="KYC">
+                <IconButton href="/notifications" label="Notifications">
                   <BellIcon />
                 </IconButton>
               </>
@@ -171,8 +179,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <MenuLink href="/services" label="Services & Listings" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/messages" label="Inbox & Calls" onClick={() => setMenuOpen(false)} />
               <MenuLink href="/wallet" label="Wallet" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/kyc" label="KYC & Trust" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/login" label="Account" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/notifications" label="Alerts" onClick={() => setMenuOpen(false)} />
+              <MenuLink href="/account" label="Account" onClick={() => setMenuOpen(false)} />
             </div>
 
             {hasSession && (
@@ -192,7 +200,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </>
       )}
 
-      <main style={{ paddingBottom: "max(86px, calc(74px + var(--safe-bottom)))" }}>{children}</main>
+      <main style={{ paddingBottom: "max(104px, calc(90px + var(--safe-bottom)))" }}>{children}</main>
 
       <footer className="bm-mobile-footer">
         {footerItems.map((item) => {
