@@ -18,6 +18,8 @@ function normalizeMessage(input?: string) {
 export async function POST(req: Request) {
   const requestId = randomUUID();
   const started = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
 
   try {
     const body = await req.json();
@@ -25,7 +27,9 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-request-id": requestId },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     const text = await upstream.text();
     const data = text ? JSON.parse(text) : {};
@@ -41,7 +45,12 @@ export async function POST(req: Request) {
     const response = NextResponse.json({ ok: true, user: data.user }, { headers: { "x-request-id": requestId } });
     applyServerSession(response, { token: data.token, user: data.user });
     return response;
-  } catch {
-    return NextResponse.json({ ok: false, message: "Registration error" }, { status: 500, headers: { "x-request-id": requestId } });
+  } catch (error) {
+    clearTimeout(timer);
+    const message =
+      error instanceof DOMException && error.name === "AbortError"
+        ? "Backend request timed out. Check Render backend and database connection."
+        : "Registration error";
+    return NextResponse.json({ ok: false, message }, { status: 500, headers: { "x-request-id": requestId } });
   }
 }

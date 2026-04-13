@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiPost } from "@/lib/api";
@@ -25,7 +24,6 @@ function friendlyError(error?: string) {
 }
 
 export default function VendorLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("Use your business email and password.");
@@ -55,7 +53,8 @@ export default function VendorLoginPage() {
     writeSession({ user: res.data.user });
     setBusy(null);
     setTone("success");
-    router.push("/dashboard");
+    setStatus("Signed in. Redirecting...");
+    window.location.assign("/dashboard");
   }
 
   return (
@@ -117,7 +116,8 @@ export default function VendorLoginPage() {
                 }
                 writeSession({ user: res.data.user });
                 setTone("success");
-                router.push("/dashboard");
+                setStatus("Account created. Redirecting...");
+                window.location.assign("/dashboard");
               }}
             >
               Sign up here

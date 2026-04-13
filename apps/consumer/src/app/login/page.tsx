@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiPost } from "@/lib/api";
@@ -24,46 +24,21 @@ function friendlyError(error?: string) {
 }
 
 export default function ConsumerLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("Enter your details to login or create an account.");
+  const [status, setStatus] = useState("Use your Zota account email and password.");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [busy, setBusy] = useState<null | "signup" | "login">(null);
-
-  async function signup() {
-    const emailValue = email.trim().toLowerCase();
-    if (!isValidEmail(emailValue)) {
-      setTone("error");
-      return setStatus("Enter a valid email address.");
-    }
-
-    setTone("info");
-    setStatus("Creating account...");
-    setBusy("signup");
-    const res = await apiPost<AuthResponse>("/api/session/register", {
-      role: "CONSUMER",
-      email: emailValue,
-      password,
-      fullName: "Consumer User",
-    });
-    if (!res.ok || !res.data) {
-      setBusy(null);
-      setTone("error");
-      return setStatus(friendlyError(res.error));
-    }
-    writeSession({ user: res.data.user });
-    setTone("success");
-    setStatus("Account created. Redirecting...");
-    setBusy(null);
-    window.location.assign("/dashboard");
-  }
 
   async function login() {
     const emailValue = email.trim().toLowerCase();
     if (!isValidEmail(emailValue)) {
       setTone("error");
       return setStatus("Enter a valid email address.");
+    }
+    if (!password.trim()) {
+      setTone("error");
+      return setStatus("Enter your password.");
     }
 
     setTone("info");
@@ -84,21 +59,71 @@ export default function ConsumerLoginPage() {
 
   return (
     <AppShell>
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-2xl font-bold text-gray-900">Login / Signup</h2>
-          <p className="text-gray-600 mt-1">Access your requests and book trusted providers.</p>
-          <input className="mt-4 w-full px-4 py-3 border border-gray-300 rounded-lg" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className="mt-3 w-full px-4 py-3 border border-gray-300 rounded-lg" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <div className="mt-4 flex gap-3">
-            <button disabled={busy !== null} className="px-5 py-3 border border-gray-300 hover:bg-gray-50 rounded-lg font-semibold disabled:opacity-60" onClick={login}>
+      <div className="mx-auto max-w-xl px-4 py-10">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Zota</p>
+          <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Login</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Access your requests, bookings, wallet, and conversations.</p>
+          <input className="mt-5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none" type="email" placeholder="Email" value={email} autoComplete="email" onChange={(e) => setEmail(e.target.value)} />
+          <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none" type="password" placeholder="Password" value={password} autoComplete="current-password" onChange={(e) => setPassword(e.target.value)} />
+          <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+            <label className="flex items-center gap-2 text-slate-600">
+              <input type="checkbox" defaultChecked className="rounded border-slate-300" />
+              Remember me
+            </label>
+            <a className="font-semibold text-slate-700 underline underline-offset-4" href="mailto:support@zota.app?subject=Zota%20password%20reset">
+              Forgot password?
+            </a>
+          </div>
+          <div className="mt-5">
+            <button disabled={busy !== null} className="w-full rounded-2xl bg-slate-950 px-5 py-3 font-semibold text-white disabled:opacity-60" onClick={login}>
               {busy === "login" ? "Signing in..." : "Login"}
             </button>
-            <button disabled={busy !== null} className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold disabled:opacity-60" onClick={signup}>
-              {busy === "signup" ? "Creating..." : "Create account"}
-            </button>
           </div>
-          <p className="mt-4 text-gray-600">{status}</p>
+          <p className="mt-4 text-sm text-slate-600">{status}</p>
+          <p className="mt-6 text-sm text-slate-500">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/login?signup=1"
+              className="font-semibold text-slate-900 underline underline-offset-4"
+              onClick={async (e) => {
+                e.preventDefault();
+                const emailValue = email.trim().toLowerCase();
+                if (!isValidEmail(emailValue)) {
+                  setTone("error");
+                  setStatus("Enter a valid email address before creating an account.");
+                  return;
+                }
+                if (!password.trim()) {
+                  setTone("error");
+                  setStatus("Enter a password before creating an account.");
+                  return;
+                }
+
+                setTone("info");
+                setStatus("Creating account...");
+                setBusy("signup");
+                const res = await apiPost<AuthResponse>("/api/session/register", {
+                  role: "CONSUMER",
+                  email: emailValue,
+                  password,
+                  fullName: emailValue.split("@")[0] || "Consumer User",
+                });
+                setBusy(null);
+                if (!res.ok || !res.data) {
+                  setTone("error");
+                  return setStatus(friendlyError(res.error));
+                }
+                writeSession({ user: res.data.user });
+                setTone("success");
+                setStatus("Account created. Redirecting...");
+                window.location.assign("/dashboard");
+              }}
+            >
+              Sign up here
+            </Link>
+            .
+          </p>
         </div>
       </div>
       <StatusToast message={status} tone={tone} />
