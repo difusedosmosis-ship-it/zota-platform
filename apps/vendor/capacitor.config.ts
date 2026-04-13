@@ -10,6 +10,13 @@ const config: CapacitorConfig = {
     url: serverUrl,
     cleartext: serverUrl.startsWith('http://'),
   },
+  plugins: {
+    StatusBar: {
+      overlaysWebView: false,
+      style: 'DARK',
+      backgroundColor: '#ffffff',
+    },
+  },
 };
 
 export default config;
