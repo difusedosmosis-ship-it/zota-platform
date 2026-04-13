@@ -6,25 +6,6 @@ import { clearSession, readSession } from "@/lib/session";
 import { useMemo, useState } from "react";
 import { ZotaLogo } from "@/components/ZotaLogo";
 
-function MenuLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
-  const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
-
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={`bm-menu-link ${
-        active
-          ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-          : "text-gray-700 border-black/10 hover:bg-gray-50"
-      }`}
-    >
-      {label}
-    </Link>
-  );
-}
-
 function IconButton({
   href,
   label,
@@ -131,7 +112,6 @@ function FooterIcon({ name }: { name: FooterItem["icon"] }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [hasSession] = useState(() => !!readSession());
-  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
 
   const footerItems = useMemo<FooterItem[]>(
@@ -150,13 +130,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 border-b border-black/10 bg-white/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            <button
-              aria-label="Open menu"
-              className="bm-icon-btn"
-              onClick={() => setMenuOpen(true)}
-            >
-              <span className="bm-hamburger" />
-            </button>
             <ZotaLogo size={40} compact />
           </div>
 
@@ -178,43 +151,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-
-      {menuOpen && (
-        <>
-          <button className="bm-overlay" aria-label="Close menu" onClick={() => setMenuOpen(false)} />
-          <aside className="bm-side-sheet">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Menu</h3>
-              <button className="bm-icon-btn" aria-label="Close menu" onClick={() => setMenuOpen(false)}>
-                ✕
-              </button>
-            </div>
-            <div className="mt-4 flex flex-col gap-2">
-              <MenuLink href="/dashboard" label="Explore" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/bookings" label="Nearby" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/requests" label="Requests" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/wallet" label="Wallet" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/messages" label="Messages & Calls" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/profile" label="Account" onClick={() => setMenuOpen(false)} />
-              <MenuLink href="/notifications" label="Alerts" onClick={() => setMenuOpen(false)} />
-            </div>
-
-            {hasSession && (
-              <button
-                className="mt-5 rounded-xl px-4 py-2 text-sm font-medium text-gray-700 border border-black/10 hover:bg-gray-50"
-                onClick={() => {
-                  clearSession();
-                  fetch("/api/session/logout", { method: "POST" }).finally(() => {
-                    window.location.href = "/login";
-                  });
-                }}
-              >
-                Logout
-              </button>
-            )}
-          </aside>
-        </>
-      )}
 
       <main style={{ paddingBottom: "max(86px, calc(74px + var(--safe-bottom)))" }}>{children}</main>
 
