@@ -14,7 +14,7 @@ export function StatusToast({ message, tone = "info" }: Props) {
       : "border-rose-200 bg-rose-50 text-rose-900";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-[5.25rem] z-[70] flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 z-[70] flex justify-center px-4" style={{ top: "calc(var(--safe-top) + 6.5rem)" }}>
       <div
         role="status"
         aria-live="polite"
