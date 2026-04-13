@@ -33,6 +33,13 @@ export default function ProfilePage() {
     window.location.href = "/login";
   }
 
+  function logout() {
+    clearSession();
+    fetch("/api/session/logout", { method: "POST" }).finally(() => {
+      window.location.href = "/login";
+    });
+  }
+
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -48,6 +55,11 @@ export default function ProfilePage() {
             <a className="mt-2 inline-flex font-semibold text-gray-900 underline underline-offset-4" href="mailto:support@zota.app?subject=Zota%20password%20reset">
               Forgot password?
             </a>
+            <div className="mt-4">
+              <button className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800" onClick={logout}>
+                Sign out
+              </button>
+            </div>
           </div>
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">Danger zone</p>

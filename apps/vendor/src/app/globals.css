@@ -102,7 +102,7 @@ body {
   position: fixed;
   left: calc(var(--safe-left) + 6px);
   right: calc(var(--safe-right) + 6px);
-  bottom: max(18px, calc(var(--safe-bottom) + 12px));
+  bottom: max(22px, calc(var(--safe-bottom) + 16px));
   z-index: 65;
   height: 76px;
   padding: 8px;
