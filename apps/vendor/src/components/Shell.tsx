@@ -134,7 +134,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="bm-safe-page min-h-screen w-full bg-[#f6f7f9] text-slate-900">
-      <header className="sticky top-0 z-50 mx-auto mt-2 w-[calc(100%-1rem)] max-w-7xl rounded-[22px] border border-black/10 bg-white/95 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+      <header
+        className="fixed z-50 rounded-[24px] border border-black/10 bg-white/95 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+        style={{
+          top: "calc(var(--safe-top) + 14px)",
+          left: "calc(var(--safe-left) + 10px)",
+          right: "calc(var(--safe-right) + 10px)",
+        }}
+      >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <button aria-label="Open menu" className="bm-icon-btn" onClick={() => setMenuOpen(true)}>
@@ -199,7 +206,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </>
       )}
 
-      <main style={{ paddingBottom: "max(108px, calc(88px + var(--safe-bottom)))" }}>{children}</main>
+      <main
+        style={{
+          paddingTop: "calc(var(--safe-top) + 92px)",
+          paddingBottom: "max(108px, calc(88px + var(--safe-bottom)))",
+        }}
+      >
+        {children}
+      </main>
 
       <footer className="bm-mobile-footer">
         {footerItems.map((item) => {

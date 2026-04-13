@@ -27,7 +27,7 @@ body {
 }
 
 .bm-safe-page {
-  padding-top: calc(var(--safe-top) + 6px);
+  padding-top: 0;
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
 }
@@ -102,7 +102,7 @@ body {
   position: fixed;
   left: calc(var(--safe-left) + 10px);
   right: calc(var(--safe-right) + 10px);
-  bottom: max(10px, var(--safe-bottom));
+  bottom: max(10px, calc(var(--safe-bottom) + 2px));
   z-index: 65;
   height: 72px;
   padding: 8px;
