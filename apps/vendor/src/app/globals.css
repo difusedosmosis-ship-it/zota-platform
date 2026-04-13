@@ -100,11 +100,11 @@ body {
 
 .bm-mobile-footer {
   position: fixed;
-  left: calc(var(--safe-left) + 6px);
-  right: calc(var(--safe-right) + 6px);
-  bottom: max(22px, calc(var(--safe-bottom) + 16px));
+  left: calc(var(--safe-left) + 8px);
+  right: calc(var(--safe-right) + 8px);
+  bottom: max(12px, calc(var(--safe-bottom) + 8px));
   z-index: 65;
-  height: 76px;
+  height: 74px;
   padding: 8px;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

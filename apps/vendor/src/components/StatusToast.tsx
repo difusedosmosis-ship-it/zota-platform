@@ -1,12 +1,30 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 type Props = {
   message: string;
   tone?: "info" | "success" | "error";
 };
 
 export function StatusToast({ message, tone = "info" }: Props) {
-  if (!message || tone === "info") return null;
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!message || tone === "info") {
+      setVisible(false);
+      return;
+    }
+
+    setVisible(true);
+    const timeout = window.setTimeout(() => {
+      setVisible(false);
+    }, tone === "success" ? 1400 : 2200);
+
+    return () => window.clearTimeout(timeout);
+  }, [message, tone]);
+
+  if (!message || tone === "info" || !visible) return null;
 
   const palette =
     tone === "success"
@@ -14,11 +32,11 @@ export function StatusToast({ message, tone = "info" }: Props) {
       : "border-rose-200 bg-rose-50 text-rose-900";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 z-[70] flex justify-center px-4" style={{ top: "calc(var(--safe-top) + 6.5rem)" }}>
+    <div className="pointer-events-none fixed inset-x-0 z-[70] flex justify-center px-4" style={{ top: "calc(var(--safe-top) + 5.6rem)" }}>
       <div
         role="status"
         aria-live="polite"
-        className={`max-w-md rounded-2xl border px-4 py-3 text-sm font-medium shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur ${palette}`}
+        className={`max-w-sm rounded-2xl border px-4 py-3 text-sm font-medium shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur ${palette}`}
       >
         {message}
       </div>

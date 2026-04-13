@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const COOKIE_NAME = "bm_session";
-const PROTECTED = ["/dashboard", "/kyc", "/services", "/messages", "/wallet", "/account", "/notifications"];
+const PROTECTED = ["/dashboard", "/kyc", "/services", "/requests", "/messages", "/wallet", "/account", "/notifications"];
 const ROLE = "VENDOR";
 
 function decodePayload(raw?: string) {
@@ -37,5 +37,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/dashboard/:path*", "/kyc/:path*", "/services/:path*", "/messages/:path*", "/wallet/:path*", "/account/:path*", "/notifications/:path*"],
+  matcher: ["/login", "/dashboard/:path*", "/kyc/:path*", "/services/:path*", "/requests/:path*", "/messages/:path*", "/wallet/:path*", "/account/:path*", "/notifications/:path*"],
 };

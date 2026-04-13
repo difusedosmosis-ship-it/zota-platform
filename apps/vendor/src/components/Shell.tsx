@@ -58,7 +58,7 @@ function MessageIcon() {
   );
 }
 
-function FooterIcon({ name }: { name: "home" | "services" | "wallet" | "messages" | "account" }) {
+function FooterIcon({ name }: { name: "home" | "services" | "requests" | "wallet" | "account" }) {
   if (name === "home") {
     return (
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
@@ -78,19 +78,20 @@ function FooterIcon({ name }: { name: "home" | "services" | "wallet" | "messages
       </svg>
     );
   }
+  if (name === "requests") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+        <rect x="4" y="4" width="16" height="16" rx="3" />
+        <path d="M8 9h8M8 13h8M8 17h5" />
+      </svg>
+    );
+  }
   if (name === "wallet") {
     return (
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
         <rect x="2.5" y="6" width="19" height="13" rx="2.5" />
         <path d="M2.5 9.5h19" />
         <circle cx="16.5" cy="13.5" r="1.4" />
-      </svg>
-    );
-  }
-  if (name === "messages") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-        <path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 3v-3H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
       </svg>
     );
   }
@@ -113,7 +114,7 @@ function FooterIcon({ name }: { name: "home" | "services" | "wallet" | "messages
 type FooterItem = {
   href: string;
   label: string;
-  icon: "home" | "services" | "wallet" | "messages" | "account";
+  icon: "home" | "services" | "requests" | "wallet" | "account";
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -125,8 +126,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     () => [
       { href: "/dashboard", label: "Home", icon: "home" },
       { href: "/services", label: "Services", icon: "services" },
+      { href: "/requests", label: "Requests", icon: "requests" },
       { href: "/wallet", label: "Wallet", icon: "wallet" },
-      { href: "/messages", label: "Inbox", icon: "messages" },
       { href: "/account", label: "Account", icon: "account" },
     ],
     [],
@@ -137,9 +138,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header
         className="fixed z-50 rounded-[24px] border border-black/10 bg-white/95 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl"
         style={{
-          top: "calc(var(--safe-top) + 34px)",
-          left: "calc(var(--safe-left) + 4px)",
-          right: "calc(var(--safe-right) + 4px)",
+          top: "calc(var(--safe-top) + 18px)",
+          left: "calc(var(--safe-left) + 8px)",
+          right: "calc(var(--safe-right) + 8px)",
         }}
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -208,8 +209,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main
         style={{
-          paddingTop: "calc(var(--safe-top) + 124px)",
-          paddingBottom: "max(132px, calc(110px + var(--safe-bottom)))",
+          paddingTop: "calc(var(--safe-top) + 104px)",
+          paddingBottom: "max(118px, calc(96px + var(--safe-bottom)))",
         }}
       >
         {children}
