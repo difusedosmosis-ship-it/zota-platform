@@ -295,33 +295,55 @@ export default function VendorDashboardPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
-        <section className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.15),_transparent_30%),linear-gradient(140deg,#0f172a_0%,#13253f_42%,#073b3a_100%)] p-6 text-white shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-emerald-100">Business context</p>
-          <h1 className="mt-3 text-3xl font-black tracking-[-0.03em] sm:text-4xl">{greetingForHour()}, {businessLabel}</h1>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <div className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Business</p>
-              <p className="mt-2 text-lg font-bold text-white">{vendor?.businessName || "Business setup pending"}</p>
+        <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-6 text-slate-950 shadow-[0_18px_36px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-200 text-xl text-slate-500">
+              ◐
             </div>
-            <div className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Verification</p>
-              <p className="mt-2 text-lg font-bold text-white">{verificationLabel}</p>
-              <p className="mt-1 text-xs text-slate-300">Ref: {referenceNumber}</p>
-            </div>
-            <div className="rounded-[22px] border border-white/10 bg-white/8 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Status</p>
-              <p className="mt-2 text-lg font-bold text-white">{businessStatus}</p>
-              <p className="mt-1 text-xs text-slate-300">{vendor?.city || "Location not set yet"}</p>
+            <div>
+              <p className="text-[13px] font-medium text-slate-500">Business context</p>
+              <h1 className="text-[2rem] font-black tracking-[-0.04em] text-slate-950 sm:text-[2.3rem]">
+                {greetingForHour()},{" "}
+                <span className="text-emerald-700">{businessLabel}</span>
+              </h1>
             </div>
           </div>
+
+          <div className="mt-6 rounded-[28px] bg-[linear-gradient(145deg,#0b5d48_0%,#0f766e_100%)] p-6 text-white shadow-[0_18px_40px_rgba(8,47,73,0.22)]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-xl">
+                ▣
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100">Business</p>
+                <p className="mt-1 text-3xl font-black tracking-[-0.04em] text-white">
+                  {vendor?.businessName || "Business setup pending"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 inline-flex rounded-full bg-white/14 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+              Ref No: {referenceNumber}
+            </div>
+
+            <div className="mt-5 grid gap-3 text-sm text-emerald-50 md:grid-cols-2">
+              <p>
+                <span className="font-semibold text-white">Verification:</span> {verificationLabel}
+              </p>
+              <p>
+                <span className="font-semibold text-white">Status:</span> {businessStatus}
+              </p>
+            </div>
+          </div>
+
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/account" className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900">
               Open account
             </Link>
-            <Link href="/kyc" className="rounded-2xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white">
+            <Link href="/kyc" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
               Verification
             </Link>
-            <Link href="/requests" className="rounded-2xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white">
+            <Link href="/requests" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
               Requests
             </Link>
           </div>
