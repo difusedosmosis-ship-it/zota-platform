@@ -294,25 +294,30 @@ export default function VendorDashboardPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
-        <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-6 text-slate-950 shadow-[0_18px_36px_rgba(15,23,42,0.08)]">
+      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-4">
+        <section className="rounded-[30px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] p-5 text-slate-950 shadow-[0_18px_36px_rgba(15,23,42,0.08)] sm:p-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-200 text-xl text-slate-500">
-              ◐
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+              </svg>
             </div>
             <div>
-              <p className="text-[13px] font-medium text-slate-500">Business context</p>
-              <h1 className="text-[2rem] font-black tracking-[-0.04em] text-slate-950 sm:text-[2.3rem]">
+              <h1 className="text-[1.05rem] font-medium tracking-[-0.02em] text-slate-700 sm:text-[1.15rem]">
                 {greetingForHour()},{" "}
                 <span className="text-emerald-700">{businessLabel}</span>
               </h1>
             </div>
           </div>
 
-          <div className="mt-6 rounded-[28px] bg-[linear-gradient(145deg,#0b5d48_0%,#0f766e_100%)] p-6 text-white shadow-[0_18px_40px_rgba(8,47,73,0.22)]">
+          <div className="mt-5 rounded-[28px] bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.12),_transparent_28%),linear-gradient(145deg,#050816_0%,#0b1220_52%,#111827_100%)] p-6 text-white shadow-[0_18px_40px_rgba(8,15,34,0.3)]">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-xl">
-                ▣
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white">
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 21h18" />
+                  <path d="M5 21V7l7-4 7 4v14" />
+                  <path d="M9 21v-6h6v6" />
+                </svg>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100">Business</p>
@@ -334,18 +339,6 @@ export default function VendorDashboardPage() {
                 <span className="font-semibold text-white">Status:</span> {businessStatus}
               </p>
             </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/account" className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900">
-              Open account
-            </Link>
-            <Link href="/kyc" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
-              Verification
-            </Link>
-            <Link href="/requests" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
-              Requests
-            </Link>
           </div>
         </section>
 
