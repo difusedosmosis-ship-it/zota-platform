@@ -209,7 +209,7 @@ export default function VendorServicesPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Services & assets</p>
-              <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Build your business catalog</h1>
+              <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">Build your business catalog</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                 Publish services and reserve-now assets cleanly so the consumer app can discover the business without noisy demo content.
               </p>
@@ -223,20 +223,20 @@ export default function VendorServicesPage() {
         <div className="mt-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
           <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Service publishing</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Create a service</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">Create a service</h2>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <select className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">Select category</option>
                 {physicalCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={pricingType} onChange={(e) => setPricingType(e.target.value)}>
+              <select className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" value={pricingType} onChange={(e) => setPricingType(e.target.value)}>
                 <option value="from">From pricing</option>
                 <option value="fixed">Fixed pricing</option>
                 <option value="quote">Quote only</option>
               </select>
-              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none md:col-span-2" value={serviceTitle} onChange={(e) => setServiceTitle(e.target.value)} placeholder="Service title" />
-              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)} placeholder="Price" />
+              <input className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none md:col-span-2" value={serviceTitle} onChange={(e) => setServiceTitle(e.target.value)} placeholder="Service title" />
+              <input className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" type="number" value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)} placeholder="Price" />
               <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 Add a cover image and up to five gallery images to improve trust and conversion.
               </div>
@@ -246,7 +246,7 @@ export default function VendorServicesPage() {
               <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                 <label className="text-sm font-semibold text-slate-900">Cover image</label>
                 <input
-                  className="mt-3 block w-full text-sm text-slate-600"
+                  className="mt-3 block w-full min-w-0 text-base text-slate-600"
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
@@ -272,7 +272,7 @@ export default function VendorServicesPage() {
               <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                 <label className="text-sm font-semibold text-slate-900">Gallery images</label>
                 <input
-                  className="mt-3 block w-full text-sm text-slate-600"
+                  className="mt-3 block w-full min-w-0 text-base text-slate-600"
                   type="file"
                   accept="image/*"
                   multiple
@@ -305,19 +305,19 @@ export default function VendorServicesPage() {
 
           <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Reserve-now inventory</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Create asset</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">Create asset</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">Hotels, halls, rentals, and other reserve-now inventory should live here.</p>
 
             <div className="mt-4 grid gap-3">
-              <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL") }>
+              <select className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL") }>
                 <option value="HOTEL">Hotel</option>
                 <option value="CAR">Car Rental</option>
                 <option value="HALL">Event Hall</option>
               </select>
-              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingTitle} onChange={(e) => setBookingTitle(e.target.value)} placeholder="Asset title" />
+              <input className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" value={bookingTitle} onChange={(e) => setBookingTitle(e.target.value)} placeholder="Asset title" />
               <div className="grid gap-3 sm:grid-cols-2">
-                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingCity} onChange={(e) => setBookingCity(e.target.value)} placeholder="City" />
-                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={bookingPrice} onChange={(e) => setBookingPrice(e.target.value)} placeholder="Price per day" />
+                <input className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" value={bookingCity} onChange={(e) => setBookingCity(e.target.value)} placeholder="Operation area / city" />
+                <input className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" type="number" value={bookingPrice} onChange={(e) => setBookingPrice(e.target.value)} placeholder="Price per day" />
               </div>
             </div>
 
@@ -333,7 +333,7 @@ export default function VendorServicesPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Published services</p>
-                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Service catalog</h2>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">Service catalog</h2>
               </div>
               <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">{services.length} live</span>
             </div>
@@ -345,7 +345,7 @@ export default function VendorServicesPage() {
                   <article key={s.id} className="rounded-[24px] border border-slate-200 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-black tracking-[-0.03em] text-slate-950">{s.title}</h3>
+                        <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">{s.title}</h3>
                         <p className="mt-1 text-sm text-slate-500">{s.category.name}</p>
                       </div>
                       <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">
@@ -362,7 +362,7 @@ export default function VendorServicesPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Reserve-now inventory</p>
-                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Assets</h2>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">Assets</h2>
               </div>
               <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">{bookingListings.length} live</span>
             </div>
@@ -374,7 +374,7 @@ export default function VendorServicesPage() {
                   <article key={b.id} className="rounded-[24px] border border-slate-200 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-black tracking-[-0.03em] text-slate-950">{b.title}</h3>
+                        <h3 className="text-lg font-semibold tracking-[-0.03em] text-slate-950">{b.title}</h3>
                         <p className="mt-1 text-sm text-slate-500">{b.kind} · {b.city ?? "No city set"}</p>
                       </div>
                       <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-700">

@@ -118,8 +118,7 @@ function greetingForHour() {
   return "Good evening";
 }
 
-function formatDisplayName(user: SessionUser | null, businessName: string | null) {
-  if (businessName?.trim()) return businessName.trim();
+function formatDisplayName(user: SessionUser | null) {
   const seed = user?.email?.split("@")[0] ?? user?.phone ?? "there";
   return seed
     .replace(/[._-]+/g, " ")
@@ -287,7 +286,7 @@ export default function VendorDashboardPage() {
     };
   }, [latestOffer?.request.id, mergeRequest, refreshOffer]);
 
-  const businessLabel = formatDisplayName(user, vendor?.businessName ?? null);
+  const businessLabel = formatDisplayName(user);
   const referenceNumber = vendor ? `ZB-${vendor.id.slice(-8).toUpperCase()}` : "Pending";
   const verificationLabel = humanizeStatus(vendor?.kycStatus);
   const businessStatus = vendor?.isOnline ? "Open for business" : "Closed for requests";
@@ -321,7 +320,7 @@ export default function VendorDashboardPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-100">Business</p>
-                <p className="mt-1 text-3xl font-black tracking-[-0.04em] text-white">
+                <p className="mt-1 text-3xl font-semibold tracking-[-0.04em] text-white">
                   {vendor?.businessName || "Business setup pending"}
                 </p>
               </div>
@@ -346,7 +345,7 @@ export default function VendorDashboardPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Performance snapshot</p>
-              <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Business and request dashboard</h2>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">Business and request dashboard</h2>
             </div>
             <Link href="/wallet" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
               Wallet
@@ -355,27 +354,27 @@ export default function VendorDashboardPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total requests</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{requestDashboard.totalRequests}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{requestDashboard.totalRequests}</p>
             </div>
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Live requests</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{requestDashboard.liveRequests}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{requestDashboard.liveRequests}</p>
             </div>
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pending offers</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{requestDashboard.pendingOffers}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{requestDashboard.pendingOffers}</p>
             </div>
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Completed jobs</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{requestDashboard.completed}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{requestDashboard.completed}</p>
             </div>
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Wallet balance</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{formatCurrency(walletSummary?.balance)}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{formatCurrency(walletSummary?.balance)}</p>
             </div>
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Credits</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{formatCurrency(walletSummary?.credits)}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{formatCurrency(walletSummary?.credits)}</p>
             </div>
           </div>
         </section>
@@ -384,7 +383,7 @@ export default function VendorDashboardPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Catalog</p>
-              <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Published services and assets</h2>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">Published services and assets</h2>
             </div>
             <Link href="/services" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
               Manage catalog
@@ -393,15 +392,15 @@ export default function VendorDashboardPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Live services</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{activeServiceCount}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{activeServiceCount}</p>
             </div>
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Assets</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{bookingListingCount}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{bookingListingCount}</p>
             </div>
             <div className="rounded-[22px] bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total catalog</p>
-              <p className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{serviceCount + bookingListingCount}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">{serviceCount + bookingListingCount}</p>
             </div>
           </div>
         </section>
@@ -410,7 +409,7 @@ export default function VendorDashboardPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent movement</p>
-              <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-900">Latest activity across the business</h2>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">Latest activity across the business</h2>
             </div>
             <Link href="/requests" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
               Open requests

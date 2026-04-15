@@ -21,12 +21,21 @@ type VendorMeResponse = {
   };
 };
 
+function formatUsername(seed: string | null | undefined) {
+  if (!seed) return "Not set";
+  return seed
+    .replace(/[._-]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default function VendorAccountPage() {
   const router = useRouter();
   const [status, setStatus] = useState("");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [vendor, setVendor] = useState<VendorMeResponse["vendor"] | null>(null);
   const session = readSession();
+  const username = formatUsername(session?.user.email?.split("@")[0] ?? session?.user.phone);
 
   const loadAccount = useCallback(async () => {
     const res = await apiGet<VendorMeResponse>("/vendor/me");
@@ -71,7 +80,7 @@ export default function VendorAccountPage() {
       <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
         <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Account</p>
-          <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Business identity and trust</h1>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">Business identity and trust</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
             Keep the business profile, verification state, and account actions in one place. KYC stays here instead of sitting in the bottom navigation.
           </p>
@@ -82,20 +91,20 @@ export default function VendorAccountPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Business profile</p>
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
               <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Username</p>
+                <p className="mt-2 text-base font-semibold text-slate-950">{username}</p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Login email</p>
-                <p className="mt-2 text-base font-semibold text-slate-950">{session?.user.email ?? "Not set"}</p>
+                <p className="mt-2 break-all text-base font-medium text-slate-950">{session?.user.email ?? "Not set"}</p>
               </div>
               <div className="rounded-[22px] bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Business name</p>
                 <p className="mt-2 text-base font-semibold text-slate-950">{vendor?.businessName ?? "Not set"}</p>
               </div>
               <div className="rounded-[22px] bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Operating city</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Operating area</p>
                 <p className="mt-2 text-base font-semibold text-slate-950">{vendor?.city ?? "Not set"}</p>
-              </div>
-              <div className="rounded-[22px] bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Coverage radius</p>
-                <p className="mt-2 text-base font-semibold text-slate-950">{vendor?.coverageKm ?? 0} km</p>
               </div>
             </div>
           </section>
