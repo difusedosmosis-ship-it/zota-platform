@@ -15,6 +15,11 @@ function mapPath(path: string) {
   return `/api/backend${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+function resolveBrowserUrl(path: string) {
+  if (typeof window === "undefined") return path;
+  return new URL(path, window.location.origin).toString();
+}
+
 async function parseResponse<T>(res: Response): Promise<ApiResult<T>> {
   const requestId = res.headers.get("x-request-id");
   const raw = await res.text();
@@ -34,10 +39,11 @@ async function parseResponse<T>(res: Response): Promise<ApiResult<T>> {
 
 async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<ApiResult<T>> {
   const url = mapPath(path);
+  const fallbackUrl = resolveBrowserUrl(url);
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const res = await fetch(url, {
+      const res = await fetch(attempt === 0 ? url : fallbackUrl, {
         ...init,
         headers: {
           "Content-Type": "application/json",

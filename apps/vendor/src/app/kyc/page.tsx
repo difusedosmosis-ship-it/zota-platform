@@ -12,7 +12,6 @@ type VendorMeResponse = {
   vendor: {
     businessName: string | null;
     city: string | null;
-    coverageKm: number;
     isOnline: boolean;
     kycStatus: string;
     kycNote: string | null;
@@ -26,7 +25,6 @@ export default function VendorKycPage() {
 
   const [businessName, setBusinessName] = useState("");
   const [city, setCity] = useState("");
-  const [coverageKm, setCoverageKm] = useState(10);
   const [isOnline, setIsOnline] = useState(true);
   const [kycStatus, setKycStatus] = useState("-");
   const [kycNote, setKycNote] = useState<string | null>(null);
@@ -37,6 +35,11 @@ export default function VendorKycPage() {
   const [selfieUrl, setSelfieUrl] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
 
+  function proxyUrl(path: string) {
+    if (typeof window === "undefined") return path;
+    return new URL(path, window.location.origin).toString();
+  }
+
   const loadVendor = useCallback(async () => {
     const res = await apiGet<VendorMeResponse>("/vendor/me");
     if (!res.ok || !res.data) {
@@ -46,7 +49,6 @@ export default function VendorKycPage() {
 
     setBusinessName((prev) => res.data?.vendor.businessName ?? prev);
     setCity((prev) => res.data?.vendor.city ?? prev);
-    setCoverageKm(res.data.vendor.coverageKm);
     setIsOnline(res.data.vendor.isOnline);
     setKycStatus(res.data.vendor.kycStatus);
     setKycNote(res.data.vendor.kycNote);
@@ -57,7 +59,7 @@ export default function VendorKycPage() {
   async function saveProfile() {
     setTone("info");
     setStatus("Saving profile...");
-    const res = await apiPatch<{ ok: boolean }>("/vendor/me", { businessName, city, coverageKm, isOnline });
+    const res = await apiPatch<{ ok: boolean }>("/vendor/me", { businessName, city, isOnline });
     if (!res.ok) {
       setTone("error");
       return setStatus(`Failed: ${res.error}`);
@@ -70,7 +72,7 @@ export default function VendorKycPage() {
   async function submitKyc() {
     if ((!idDocUrl && !ninNumber) || !businessDocUrl || !skillProofUrl) {
       setTone("error");
-      setStatus("Provide NIN number or ID upload, plus CAC/business document and skill certificate.");
+      setStatus("Provide NIN number or ID upload, plus proof of address. Business registration certificate is optional.");
       return;
     }
 
@@ -110,7 +112,7 @@ export default function VendorKycPage() {
       setStatus(`Uploading ${label}...`);
 
       const base64 = arrayBufferToBase64(await file.arrayBuffer());
-      const res = await fetch("/api/backend/vendor/kyc/upload", {
+      const res = await fetch(proxyUrl("/api/backend/vendor/kyc/upload"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -155,7 +157,7 @@ export default function VendorKycPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">KYC & trust</p>
-              <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Verification centre</h1>
+              <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">Verification centre</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                 Keep business identity, service proof, and profile readiness in one place so customers and payouts trust your account.
               </p>
@@ -171,14 +173,11 @@ export default function VendorKycPage() {
         <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Business profile</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Public operating details</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">Public operating details</h2>
 
             <div className="mt-4 grid gap-3">
-              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name" />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
-                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={coverageKm} onChange={(e) => setCoverageKm(Number(e.target.value))} placeholder="Coverage (KM)" />
-              </div>
+              <input className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name" />
+              <input className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Business address / operation area" />
               <label className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
                 <input type="checkbox" checked={isOnline} onChange={(e) => setIsOnline(e.target.checked)} />
                 Accept new customer demand right now
@@ -190,19 +189,19 @@ export default function VendorKycPage() {
 
           <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Verification evidence</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Submit compliance files</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-slate-950">Submit compliance files</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">Required: means of ID or NIN, plus proof of address. Business registration certificate is optional for skilled workers without registered businesses.</p>
 
             <div className="mt-4 grid gap-4">
               <div className="rounded-[24px] border border-slate-200 p-4">
                 <label className="text-sm font-semibold text-slate-900">NIN number</label>
-                <input className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={ninNumber} onChange={(e) => setNinNumber(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="11-digit NIN number" />
+                <input className="mt-3 w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700 outline-none" inputMode="numeric" value={ninNumber} onChange={(e) => setNinNumber(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="11-digit NIN number" />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                   <label className="text-sm font-semibold text-slate-900">NIN / Government ID</label>
-                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" capture="environment" onChange={(e) => {
+                  <input className="mt-3 block w-full min-w-0 text-base text-slate-600" type="file" accept="image/*,.pdf" capture="environment" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setIdDocUrl, "ID document");
                   }} />
@@ -211,7 +210,7 @@ export default function VendorKycPage() {
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                   <label className="text-sm font-semibold text-slate-900">Business registration certificate (optional)</label>
-                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
+                  <input className="mt-3 block w-full min-w-0 text-base text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setBusinessDocUrl, "Business document");
                   }} />
@@ -220,16 +219,16 @@ export default function VendorKycPage() {
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                   <label className="text-sm font-semibold text-slate-900">Proof of address</label>
-                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
+                  <input className="mt-3 block w-full min-w-0 text-base text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) void uploadKycFile(file, setSkillProofUrl, "Skill proof");
+                    if (file) void uploadKycFile(file, setSkillProofUrl, "Proof of address");
                   }} />
-                  <p className="mt-3 text-xs text-slate-500">{skillProofUrl ? "Document ready." : uploading === "Skill proof" ? "Uploading..." : "Upload utility bill, tenancy proof, or similar."}</p>
+                  <p className="mt-3 text-xs text-slate-500">{skillProofUrl ? "Document ready." : uploading === "Proof of address" ? "Uploading..." : "Upload utility bill, tenancy proof, or similar."}</p>
                 </div>
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
                   <label className="text-sm font-semibold text-slate-900">Selfie (optional)</label>
-                  <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*" capture="user" onChange={(e) => {
+                  <input className="mt-3 block w-full min-w-0 text-base text-slate-600" type="file" accept="image/*" capture="user" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setSelfieUrl, "Selfie");
                   }} />

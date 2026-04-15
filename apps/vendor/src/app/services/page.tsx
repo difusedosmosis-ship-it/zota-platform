@@ -55,6 +55,11 @@ export default function VendorServicesPage() {
 
   const physicalCategories = categories.filter((c) => c.kind === "PHYSICAL");
 
+  function proxyUrl(path: string) {
+    if (typeof window === "undefined") return path;
+    return new URL(path, window.location.origin).toString();
+  }
+
   async function loadCategories() {
     const res = await apiGet<CategoriesResponse>("/categories");
     if (!res.ok || !res.data) {
@@ -102,7 +107,7 @@ export default function VendorServicesPage() {
 
   async function uploadServiceImage(file: File) {
     const base64 = arrayBufferToBase64(await file.arrayBuffer());
-    const res = await fetch("/api/backend/vendor/services/upload", {
+    const res = await fetch(proxyUrl("/api/backend/vendor/services/upload"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
