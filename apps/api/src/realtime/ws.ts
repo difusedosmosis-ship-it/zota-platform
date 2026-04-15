@@ -44,6 +44,17 @@ export function notifyUser(userId: string, event: string, payload: any) {
   }
 }
 
+export async function notifyAdmins(event: string, payload: any) {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true },
+  });
+
+  for (const admin of admins) {
+    notifyUser(admin.id, event, payload);
+  }
+}
+
 function relayToUser(userId: string, event: string, payload: any) {
   notifyUser(userId, event, payload);
 }

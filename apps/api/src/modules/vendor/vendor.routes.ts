@@ -7,7 +7,7 @@ import { requireRole } from "../../middleware/requireRole.js";
 import { prisma } from "../../prisma.js";
 import { HttpError } from "../../utils/http.js";
 import { newId } from "../../utils/ids.js";
-import { notifyUser, notifyVendor } from "../../realtime/ws.js";
+import { notifyAdmins, notifyUser, notifyVendor } from "../../realtime/ws.js";
 import {
   UpdateVendorProfileSchema,
   SubmitKycSchema,
@@ -342,6 +342,15 @@ export function vendorRoutes() {
       await prisma.vendorProfile.update({
         where: { id: vendor.id },
         data: { kycStatus: "UNDER_REVIEW" },
+      });
+
+      await notifyAdmins("office:kyc_submitted", {
+        submissionId: submission.id,
+        vendorId: vendor.id,
+        businessName: vendor.businessName,
+        city: vendor.city,
+        status: "SUBMITTED",
+        createdAt: submission.createdAt,
       });
 
       res.json({ ok: true, submission });

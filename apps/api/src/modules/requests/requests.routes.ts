@@ -7,7 +7,7 @@ import { HttpError } from "../../utils/http.js";
 import { CreateRequestSchema } from "./requests.validators.js";
 import { dispatchOneByOne } from "./requests.service.js";
 import { env } from "../../env.js";
-import { notifyUser, notifyVendor } from "../../realtime/ws.js";
+import { notifyAdmins, notifyUser, notifyVendor } from "../../realtime/ws.js";
 
 export function requestsRoutes() {
   const r = Router();
@@ -37,6 +37,13 @@ export function requestsRoutes() {
 
       // Notify consumer immediately (request created)
       notifyUser(request.consumerId, "request_update", { request });
+      await notifyAdmins("office:request_created", {
+        requestId: request.id,
+        category: request.category,
+        city: request.city,
+        status: request.status,
+        createdAt: request.createdAt,
+      });
 
       if (input.mode === "CHOOSE") {
         if (!input.vendorId) throw new HttpError(400, "vendorId required for CHOOSE mode");
@@ -228,6 +235,12 @@ export function requestsRoutes() {
       // Real-time status updates
       notifyUser(updatedRequest.consumerId, "request_update", { request: updatedRequest });
       notifyVendor(vendor.id, "request_update", { request: updatedRequest });
+      await notifyAdmins("office:request_accepted", {
+        requestId: updatedRequest.id,
+        vendorId: vendor.id,
+        status: updatedRequest.status,
+        updatedAt: updatedRequest.updatedAt,
+      });
 
       res.json({ ok: true, request: updatedRequest });
     } catch (e) {
@@ -257,6 +270,12 @@ export function requestsRoutes() {
       if (reqRow) {
         notifyUser(reqRow.consumerId, "request_update", { request: reqRow });
         notifyVendor(vendor.id, "request_update", { request: reqRow });
+        await notifyAdmins("office:request_declined", {
+          requestId: reqRow.id,
+          vendorId: vendor.id,
+          status: reqRow.status,
+          updatedAt: reqRow.updatedAt,
+        });
       }
 
       await dispatchOneByOne(offer.requestId);
@@ -289,6 +308,12 @@ export function requestsRoutes() {
 
       notifyUser(updated.consumerId, "request_update", { request: updated });
       notifyVendor(vendor.id, "request_update", { request: updated });
+      await notifyAdmins("office:job_started", {
+        requestId: updated.id,
+        vendorId: vendor.id,
+        status: updated.status,
+        updatedAt: updated.updatedAt,
+      });
 
       res.json({ ok: true, request: updated });
     } catch (e) {
@@ -343,6 +368,12 @@ export function requestsRoutes() {
 
       notifyUser(updated.consumerId, "request_update", { request: updated });
       notifyVendor(vendor.id, "request_update", { request: updated });
+      await notifyAdmins("office:job_completed", {
+        requestId: updated.id,
+        vendorId: vendor.id,
+        status: updated.status,
+        updatedAt: updated.updatedAt,
+      });
 
       res.json({ ok: true, request: updated });
     } catch (e) {
@@ -369,6 +400,11 @@ export function requestsRoutes() {
 
       notifyUser(updated.consumerId, "request_update", { request: updated });
       if (updated.acceptedVendorId) notifyVendor(updated.acceptedVendorId, "request_update", { request: updated });
+      await notifyAdmins("office:request_canceled", {
+        requestId: updated.id,
+        status: updated.status,
+        updatedAt: updated.updatedAt,
+      });
 
       res.json({ ok: true, request: updated });
     } catch (e) {
