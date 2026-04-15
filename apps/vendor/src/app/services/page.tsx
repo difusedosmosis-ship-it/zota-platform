@@ -36,73 +36,58 @@ type BookingListingsResponse = {
 
 export default function VendorServicesPage() {
   const router = useRouter();
-  const [status, setStatus] = useState("Loading...");
+  const [status, setStatus] = useState("");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [categories, setCategories] = useState<CategoriesResponse["categories"]>([]);
   const [services, setServices] = useState<ServicesResponse["services"]>([]);
+  const [bookingListings, setBookingListings] = useState<BookingListing[]>([]);
 
   const [categoryId, setCategoryId] = useState("");
-  const [serviceTitle, setServiceTitle] = useState("General Plumbing");
+  const [serviceTitle, setServiceTitle] = useState("");
   const [pricingType, setPricingType] = useState("from");
-  const [priceFrom, setPriceFrom] = useState(10000);
+  const [priceFrom, setPriceFrom] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [galleryImageUrls, setGalleryImageUrls] = useState<string[]>([]);
+
   const [bookingKind, setBookingKind] = useState<"HOTEL" | "CAR" | "HALL">("HOTEL");
-  const [bookingTitle, setBookingTitle] = useState("Lagos Premium Suites");
-  const [bookingCity, setBookingCity] = useState("Lagos");
-  const [bookingPrice, setBookingPrice] = useState(75000);
-  const [bookingListings, setBookingListings] = useState<BookingListing[]>([]);
+  const [bookingTitle, setBookingTitle] = useState("");
+  const [bookingCity, setBookingCity] = useState("");
+  const [bookingPrice, setBookingPrice] = useState("");
+
   const physicalCategories = categories.filter((c) => c.kind === "PHYSICAL");
 
   async function loadCategories() {
-    setTone("info");
     const res = await apiGet<CategoriesResponse>("/categories");
     if (!res.ok || !res.data) {
       setTone("error");
-      return setStatus(`Failed: ${res.error}`);
+      setStatus(`Failed: ${res.error}`);
+      return;
     }
     setCategories(res.data.categories);
-    if (!categoryId && res.data.categories[0]) {
+    if (!categoryId) {
       const firstPhysical = res.data.categories.find((c) => c.kind === "PHYSICAL");
       if (firstPhysical) setCategoryId(firstPhysical.id);
     }
-    setTone("success");
-    setStatus("Categories loaded.");
   }
 
   async function loadServices() {
-    setTone("info");
     const res = await apiGet<ServicesResponse>("/vendor/services");
     if (!res.ok || !res.data) {
       setTone("error");
-      return setStatus(`Failed: ${res.error}`);
+      setStatus(`Failed: ${res.error}`);
+      return;
     }
     setServices(res.data.services);
-    setTone("success");
-    setStatus("Services loaded.");
   }
 
-  async function createService() {
-    setTone("info");
-    setStatus("Publishing service...");
-    const res = await apiPost<{ ok: boolean }>("/vendor/services", {
-      categoryId,
-      title: serviceTitle,
-      pricingType,
-      priceFrom,
-      coverImageUrl: coverImageUrl || undefined,
-      galleryImageUrls,
-      isActive: true,
-    });
-    if (!res.ok) {
+  async function loadBookingListings() {
+    const res = await apiGet<BookingListingsResponse>("/booking/vendor/listings");
+    if (!res.ok || !res.data) {
       setTone("error");
-      return setStatus(`Failed: ${res.error}`);
+      setStatus(`Failed: ${res.error}`);
+      return;
     }
-    setTone("success");
-    setStatus("Service published.");
-    setCoverImageUrl("");
-    setGalleryImageUrls([]);
-    await loadServices();
+    setBookingListings(res.data.listings);
   }
 
   function arrayBufferToBase64(buffer: ArrayBuffer) {
@@ -132,37 +117,74 @@ export default function VendorServicesPage() {
     return data.url;
   }
 
-  async function loadBookingListings() {
-    setTone("info");
-    const res = await apiGet<BookingListingsResponse>("/booking/vendor/listings");
-    if (!res.ok || !res.data) {
+  async function createService() {
+    if (!categoryId || !serviceTitle.trim()) {
       setTone("error");
-      return setStatus(`Failed: ${res.error}`);
+      setStatus("Select a category and enter a service title.");
+      return;
     }
-    setBookingListings(res.data.listings);
+
+    setTone("info");
+    setStatus("Publishing service...");
+    const res = await apiPost<{ ok: boolean }>("/vendor/services", {
+      categoryId,
+      title: serviceTitle.trim(),
+      pricingType,
+      priceFrom: priceFrom ? Number(priceFrom) : undefined,
+      coverImageUrl: coverImageUrl || undefined,
+      galleryImageUrls,
+      isActive: true,
+    });
+    if (!res.ok) {
+      setTone("error");
+      setStatus(`Failed: ${res.error}`);
+      return;
+    }
+
     setTone("success");
-    setStatus("Booking listings loaded.");
+    setStatus("Service published.");
+    setServiceTitle("");
+    setPriceFrom("");
+    setCoverImageUrl("");
+    setGalleryImageUrls([]);
+    await loadServices();
   }
 
   async function createBookingListing() {
+    if (!bookingTitle.trim()) {
+      setTone("error");
+      setStatus("Enter an asset title.");
+      return;
+    }
+    if (!bookingPrice) {
+      setTone("error");
+      setStatus("Enter an asset price.");
+      return;
+    }
+
     setTone("info");
-    setStatus("Creating booking listing...");
+    setStatus("Creating asset...");
     const res = await apiPost<{ ok: boolean }>("/booking/vendor/listings", {
       kind: bookingKind,
-      title: bookingTitle,
-      description: `${bookingTitle} booking listing`,
-      city: bookingCity,
+      title: bookingTitle.trim(),
+      description: bookingTitle.trim(),
+      city: bookingCity.trim() || undefined,
       provider: "LOCAL",
-      pricePerDay: bookingPrice,
+      pricePerDay: Number(bookingPrice),
       currency: "NGN",
       isActive: true,
     });
     if (!res.ok) {
       setTone("error");
-      return setStatus(`Failed: ${res.error}`);
+      setStatus(`Failed: ${res.error}`);
+      return;
     }
+
     setTone("success");
-    setStatus("Booking listing created.");
+    setStatus("Asset created.");
+    setBookingTitle("");
+    setBookingCity("");
+    setBookingPrice("");
     await loadBookingListings();
   }
 
@@ -179,7 +201,6 @@ export default function VendorServicesPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   return (
@@ -188,10 +209,10 @@ export default function VendorServicesPage() {
         <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Services & listings</p>
-              <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Build your Zota Business catalog</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Services & assets</p>
+              <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Build your business catalog</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                Publish service offers, bookable inventory, and visual proof so customers can discover, trust, and book you faster.
+                Publish services and reserve-now assets cleanly so the consumer app can discover the business without noisy demo content.
               </p>
             </div>
             <button className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700" onClick={() => void Promise.all([loadServices(), loadBookingListings()])}>
@@ -203,7 +224,7 @@ export default function VendorServicesPage() {
         <div className="mt-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
           <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Service publishing</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Create a service listing</h2>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Create a service</h2>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
@@ -216,7 +237,7 @@ export default function VendorServicesPage() {
                 <option value="quote">Quote only</option>
               </select>
               <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none md:col-span-2" value={serviceTitle} onChange={(e) => setServiceTitle(e.target.value)} placeholder="Service title" />
-              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={priceFrom} onChange={(e) => setPriceFrom(Number(e.target.value))} placeholder="Price" />
+              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)} placeholder="Price" />
               <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 Add a cover image and up to five gallery images to improve trust and conversion.
               </div>
@@ -246,7 +267,7 @@ export default function VendorServicesPage() {
                       });
                   }}
                 />
-                {coverImageUrl && <p className="mt-3 truncate text-xs text-emerald-700">{coverImageUrl}</p>}
+                {coverImageUrl ? <p className="mt-3 text-xs text-emerald-700">Cover ready.</p> : null}
               </div>
 
               <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
@@ -273,7 +294,7 @@ export default function VendorServicesPage() {
                       });
                   }}
                 />
-                {galleryImageUrls.length > 0 && <p className="mt-3 text-xs text-emerald-700">{galleryImageUrls.length} gallery image(s) ready</p>}
+                {galleryImageUrls.length > 0 ? <p className="mt-3 text-xs text-emerald-700">{galleryImageUrls.length} gallery image(s) ready.</p> : null}
               </div>
             </div>
 
@@ -281,20 +302,20 @@ export default function VendorServicesPage() {
           </section>
 
           <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Bookable inventory</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Create booking assets</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Reserve-now inventory</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Create asset</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">Hotels, halls, rentals, and other reserve-now inventory should live here.</p>
 
             <div className="mt-4 grid gap-3">
-              <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL")}>
+              <select className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingKind} onChange={(e) => setBookingKind(e.target.value as "HOTEL" | "CAR" | "HALL") }>
                 <option value="HOTEL">Hotel</option>
                 <option value="CAR">Car Rental</option>
                 <option value="HALL">Event Hall</option>
               </select>
-              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingTitle} onChange={(e) => setBookingTitle(e.target.value)} placeholder="Listing title" />
+              <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingTitle} onChange={(e) => setBookingTitle(e.target.value)} placeholder="Asset title" />
               <div className="grid gap-3 sm:grid-cols-2">
                 <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" value={bookingCity} onChange={(e) => setBookingCity(e.target.value)} placeholder="City" />
-                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={bookingPrice} onChange={(e) => setBookingPrice(Number(e.target.value))} placeholder="Price per day" />
+                <input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none" type="number" value={bookingPrice} onChange={(e) => setBookingPrice(e.target.value)} placeholder="Price per day" />
               </div>
             </div>
 
@@ -329,7 +350,6 @@ export default function VendorServicesPage() {
                         {s.pricingType}{s.priceFrom ? ` · NGN ${s.priceFrom.toLocaleString()}` : ""}
                       </span>
                     </div>
-                    {s.coverImageUrl && <p className="mt-3 truncate text-xs text-slate-500">Cover: {s.coverImageUrl}</p>}
                   </article>
                 ))
               )}
@@ -340,20 +360,20 @@ export default function VendorServicesPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Reserve-now inventory</p>
-                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Booking assets</h2>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Assets</h2>
               </div>
               <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-600">{bookingListings.length} live</span>
             </div>
             <div className="mt-4 space-y-3">
               {bookingListings.length === 0 ? (
-                <div className="rounded-[22px] bg-slate-50 p-4 text-sm leading-6 text-slate-500">No booking assets yet. Add one so customers can book directly from search results.</div>
+                <div className="rounded-[22px] bg-slate-50 p-4 text-sm leading-6 text-slate-500">No assets yet. Add one so customers can book directly from search results.</div>
               ) : (
                 bookingListings.map((b) => (
                   <article key={b.id} className="rounded-[24px] border border-slate-200 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="text-lg font-black tracking-[-0.03em] text-slate-950">{b.title}</h3>
-                        <p className="mt-1 text-sm text-slate-500">{b.kind} · {b.city ?? "-"}</p>
+                        <p className="mt-1 text-sm text-slate-500">{b.kind} · {b.city ?? "No city set"}</p>
                       </div>
                       <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-slate-700">
                         {b.currency} {b.pricePerDay.toLocaleString()}

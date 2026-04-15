@@ -19,7 +19,7 @@ export function StatusToast({ message, tone = "info" }: Props) {
     setVisible(true);
     const timeout = window.setTimeout(() => {
       setVisible(false);
-    }, tone === "success" ? 1400 : 2200);
+    }, tone === "success" ? 1000 : 1600);
 
     return () => window.clearTimeout(timeout);
   }, [message, tone]);
@@ -32,7 +32,7 @@ export function StatusToast({ message, tone = "info" }: Props) {
       : "border-rose-200 bg-rose-50 text-rose-900";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 z-[70] flex justify-center px-4" style={{ top: "calc(var(--safe-top) + 5.6rem)" }}>
+    <div className="pointer-events-none fixed inset-x-0 z-[70] flex justify-center px-4" style={{ top: "calc(var(--safe-top) + 5rem)" }}>
       <div
         role="status"
         aria-live="polite"

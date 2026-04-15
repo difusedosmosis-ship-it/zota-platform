@@ -10,6 +10,7 @@ import { fetchWsToken, getRealtimeBase } from "@/lib/realtime";
 import { pushNotification } from "@/lib/notifications";
 import { readSession, type SessionUser } from "@/lib/session";
 import { requireRole } from "@/lib/route-guard";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 type VendorMeResponse = {
   ok: boolean;
@@ -210,12 +211,19 @@ export default function VendorDashboardPage() {
     }
   }, []);
 
-  const refreshAll = useCallback(async () => {
-    setTone("info");
-    setStatus("Refreshing business operations...");
+  const refreshAll = useCallback(async (silent = false) => {
+    if (!silent) {
+      setTone("info");
+      setStatus("Refreshing business operations...");
+    }
     await Promise.all([refreshVendor(), refreshOffer(), refreshRequests(), refreshCatalog(), refreshFinance()]);
-    setTone("success");
-    setStatus("Business control room ready.");
+    if (!silent) {
+      setTone("success");
+      setStatus("Dashboard refreshed.");
+    } else {
+      setTone("info");
+      setStatus("");
+    }
   }, [refreshCatalog, refreshFinance, refreshOffer, refreshRequests, refreshVendor]);
 
   useEffect(() => {
@@ -225,7 +233,7 @@ export default function VendorDashboardPage() {
         const session = await requireRole(router, "VENDOR");
         if (!session || cancelled) return;
         setUser(session.user);
-        await refreshAll();
+        await refreshAll(true);
       })();
     }, 0);
     return () => {
@@ -408,7 +416,7 @@ export default function VendorDashboardPage() {
                 Location synced
               </span>
             )}
-            <button className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" onClick={refreshAll}>
+            <button className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" onClick={() => void refreshAll()}>
               Refresh
             </button>
             <Link className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white" href="/services">
@@ -656,6 +664,7 @@ export default function VendorDashboardPage() {
         </section>
       </div>
       <StatusToast message={status} tone={tone} />
+      <OnboardingTour />
     </AppShell>
   );
 }

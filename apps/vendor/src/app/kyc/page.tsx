@@ -21,7 +21,7 @@ type VendorMeResponse = {
 
 export default function VendorKycPage() {
   const router = useRouter();
-  const [status, setStatus] = useState("Loading...");
+  const [status, setStatus] = useState("");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
 
   const [businessName, setBusinessName] = useState("");
@@ -38,7 +38,6 @@ export default function VendorKycPage() {
   const [uploading, setUploading] = useState<string | null>(null);
 
   const loadVendor = useCallback(async () => {
-    setTone("info");
     const res = await apiGet<VendorMeResponse>("/vendor/me");
     if (!res.ok || !res.data) {
       setTone("error");
@@ -51,8 +50,8 @@ export default function VendorKycPage() {
     setIsOnline(res.data.vendor.isOnline);
     setKycStatus(res.data.vendor.kycStatus);
     setKycNote(res.data.vendor.kycNote);
-    setTone("success");
-    setStatus("Vendor profile loaded.");
+    setTone("info");
+    setStatus("");
   }, []);
 
   async function saveProfile() {

@@ -23,21 +23,20 @@ type VendorMeResponse = {
 
 export default function VendorAccountPage() {
   const router = useRouter();
-  const [status, setStatus] = useState("Loading account...");
+  const [status, setStatus] = useState("");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [vendor, setVendor] = useState<VendorMeResponse["vendor"] | null>(null);
   const session = readSession();
 
   const loadAccount = useCallback(async () => {
-    setTone("info");
     const res = await apiGet<VendorMeResponse>("/vendor/me");
     if (!res.ok || !res.data) {
       setTone("error");
       return setStatus(`Failed: ${res.error}`);
     }
     setVendor(res.data.vendor);
-    setTone("success");
-    setStatus("Account ready.");
+    setTone("info");
+    setStatus("");
   }, []);
 
   useEffect(() => {
@@ -111,6 +110,9 @@ export default function VendorAccountPage() {
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/kyc" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">
                 Open verification
+              </Link>
+              <Link href="/dashboard?tour=1" className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                Start setup tour
               </Link>
               <a className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700" href="mailto:support@zota.app?subject=Zota%20Business%20password%20reset">
                 Reset password

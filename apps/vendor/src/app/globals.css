@@ -30,6 +30,13 @@ body {
   padding-top: 0;
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
+  width: 100%;
+  overflow-x: clip;
+}
+
+.bm-main-shell {
+  width: 100%;
+  overflow-x: clip;
 }
 
 .bm-icon-btn {
@@ -102,7 +109,7 @@ body {
   position: fixed;
   left: calc(var(--safe-left) + 8px);
   right: calc(var(--safe-right) + 8px);
-  bottom: max(12px, calc(var(--safe-bottom) + 8px));
+  bottom: max(8px, calc(var(--safe-bottom) + 4px));
   z-index: 65;
   height: 74px;
   padding: 8px;
