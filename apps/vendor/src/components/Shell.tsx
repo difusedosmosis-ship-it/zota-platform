@@ -138,7 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header
         className="fixed z-50 rounded-[24px] border border-black/10 bg-white/95 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl"
         style={{
-          top: "calc(var(--safe-top) + 14px)",
+          top: "calc(var(--safe-top) + 10px)",
           left: "calc(var(--safe-left) + 8px)",
           right: "calc(var(--safe-right) + 8px)",
         }}
@@ -210,8 +210,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main
         className="bm-main-shell"
         style={{
-          paddingTop: "calc(var(--safe-top) + 98px)",
-          paddingBottom: "max(112px, calc(90px + var(--safe-bottom)))",
+          paddingTop: "calc(var(--safe-top) + 94px)",
+          paddingBottom: "max(108px, calc(86px + var(--safe-bottom)))",
         }}
       >
         {children}

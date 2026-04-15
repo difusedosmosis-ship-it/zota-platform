@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/Shell";
-import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
 import { requireRole } from "@/lib/route-guard";
 
@@ -298,7 +297,10 @@ export default function VendorServicesPage() {
               </div>
             </div>
 
-            <button className="mt-5 rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white" onClick={createService}>Publish service</button>
+            <div className="mt-5 flex flex-col items-start gap-2">
+              <button className="rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white" onClick={createService}>Publish service</button>
+              {status ? <p className={`text-sm ${tone === "error" ? "text-rose-600" : "text-slate-500"}`}>{status}</p> : null}
+            </div>
           </section>
 
           <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
@@ -386,7 +388,6 @@ export default function VendorServicesPage() {
           </section>
         </div>
       </div>
-      <StatusToast message={status} tone={tone} />
     </AppShell>
   );
 }

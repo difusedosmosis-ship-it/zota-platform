@@ -191,7 +191,7 @@ export default function VendorKycPage() {
           <section className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Verification evidence</p>
             <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Submit compliance files</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Required: government identity or NIN, CAC/business proof, and skill proof. Selfie is optional but recommended.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Required: means of ID or NIN, plus proof of address. Business registration certificate is optional for skilled workers without registered businesses.</p>
 
             <div className="mt-4 grid gap-4">
               <div className="rounded-[24px] border border-slate-200 p-4">
@@ -210,21 +210,21 @@ export default function VendorKycPage() {
                 </div>
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
-                  <label className="text-sm font-semibold text-slate-900">CAC / Business certificate</label>
+                  <label className="text-sm font-semibold text-slate-900">Business registration certificate (optional)</label>
                   <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setBusinessDocUrl, "Business document");
                   }} />
-                  <p className="mt-3 text-xs text-slate-500">{businessDocUrl ? "Uploaded successfully." : uploading === "Business document" ? "Uploading..." : "Upload from files."}</p>
+                  <p className="mt-3 text-xs text-slate-500">{businessDocUrl ? "Document ready." : uploading === "Business document" ? "Uploading..." : "Upload from files if available."}</p>
                 </div>
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
-                  <label className="text-sm font-semibold text-slate-900">Skill proof / portfolio</label>
+                  <label className="text-sm font-semibold text-slate-900">Proof of address</label>
                   <input className="mt-3 block w-full text-sm text-slate-600" type="file" accept="image/*,.pdf" onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) void uploadKycFile(file, setSkillProofUrl, "Skill proof");
                   }} />
-                  <p className="mt-3 text-xs text-slate-500">{skillProofUrl ? "Uploaded successfully." : uploading === "Skill proof" ? "Uploading..." : "Upload from files."}</p>
+                  <p className="mt-3 text-xs text-slate-500">{skillProofUrl ? "Document ready." : uploading === "Skill proof" ? "Uploading..." : "Upload utility bill, tenancy proof, or similar."}</p>
                 </div>
 
                 <div className="rounded-[24px] border border-dashed border-slate-200 p-4">
@@ -238,11 +238,15 @@ export default function VendorKycPage() {
               </div>
             </div>
 
-            <button className="mt-5 rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white" onClick={submitKyc}>Submit KYC</button>
+            <div className="mt-5 flex flex-col items-start gap-2">
+              <button className="rounded-full bg-emerald-950 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60" disabled={uploading !== null} onClick={submitKyc}>
+                {uploading ? `Uploading ${uploading}...` : "Submit KYC"}
+              </button>
+              {status ? <p className={`text-sm ${tone === "error" ? "text-rose-600" : "text-slate-500"}`}>{status}</p> : null}
+            </div>
           </section>
         </div>
       </div>
-      <StatusToast message={status} tone={tone} />
     </AppShell>
   );
 }

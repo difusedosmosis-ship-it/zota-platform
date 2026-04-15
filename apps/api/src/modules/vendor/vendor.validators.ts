@@ -27,9 +27,9 @@ export const SubmitKycSchema = z.object({
   idDocUrl: z.string().min(8).optional(),
   // Optional NIN number if user prefers number-first validation
   ninNumber: z.string().min(11).max(11).optional(),
-  // CAC / business registration document
-  businessDocUrl: z.string().min(8),
-  // Professional certificate / portfolio proof
+  // Business registration certificate (optional for unregistered skilled workers)
+  businessDocUrl: z.string().min(8).optional(),
+  // Proof of address
   skillProofUrl: z.string().min(8),
   // Optional selfie for stronger anti-fraud
   selfieUrl: z.string().min(8).optional(),
