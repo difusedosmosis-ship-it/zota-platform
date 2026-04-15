@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Beautiful Mind Admin",
-  description: "Moderation, KYC approvals, and platform operations.",
+  title: "Zota Office",
+  description: "Operations, verification, governance, and finance across Zota.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

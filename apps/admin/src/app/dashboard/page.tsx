@@ -30,12 +30,20 @@ type FinanceSummaryResponse = {
 };
 type CategoryResponse = { ok: boolean; category: { id: string; name: string } };
 
+function formatIdentity(user: SessionUser | null) {
+  const seed = user?.email?.split("@")[0] ?? user?.phone ?? "Office User";
+  return seed
+    .replace(/[._-]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(() => readSession()?.user ?? null);
-  const [status, setStatus] = useState("Loading office...");
+  const [status, setStatus] = useState("");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
-  const [categoryName, setCategoryName] = useState("Plumber");
+  const [categoryName, setCategoryName] = useState("");
   const [submissionCount, setSubmissionCount] = useState(0);
   const [pendingKycCount, setPendingKycCount] = useState(0);
   const [categoryCount, setCategoryCount] = useState(0);
@@ -45,23 +53,20 @@ export default function AdminDashboardPage() {
 
   const loadKycCount = useCallback(async () => {
     const res = await apiGet<KycListResponse>("/admin/kyc/submissions");
-    if (!res.ok || !res.data) {
-      setTone("error");
-      return setStatus(`Failed: ${res.error}`);
-    }
+    if (!res.ok || !res.data) throw new Error(res.error ?? "Failed to load KYC queue");
     setSubmissionCount(res.data.submissions.length);
     setPendingKycCount(res.data.submissions.filter((row) => row.status === "PENDING" || row.status === "UNDER_REVIEW").length);
   }, []);
 
   const loadCategoryCount = useCallback(async () => {
     const res = await apiGet<CategoriesResponse>("/categories");
-    if (!res.ok || !res.data) return;
+    if (!res.ok || !res.data) throw new Error(res.error ?? "Failed to load categories");
     setCategoryCount(res.data.categories.length);
   }, []);
 
   const loadFinanceSummary = useCallback(async () => {
     const res = await apiGet<FinanceSummaryResponse>("/admin/finance/vendors");
-    if (!res.ok || !res.data) return;
+    if (!res.ok || !res.data) throw new Error(res.error ?? "Failed to load finance summary");
     setVendors(res.data.vendors);
     setVendorBalance(res.data.vendors.reduce((sum, row) => sum + row.balance, 0));
     setApprovedVendors(res.data.vendors.filter((row) => row.kycStatus === "APPROVED").length);
@@ -70,9 +75,14 @@ export default function AdminDashboardPage() {
   const loadOffice = useCallback(async () => {
     setTone("info");
     setStatus("Refreshing office data...");
-    await Promise.all([loadKycCount(), loadCategoryCount(), loadFinanceSummary()]);
-    setTone("success");
-    setStatus("Office ready.");
+    try {
+      await Promise.all([loadKycCount(), loadCategoryCount(), loadFinanceSummary()]);
+      setTone("success");
+      setStatus("Office updated.");
+    } catch (error) {
+      setTone("error");
+      setStatus(error instanceof Error ? error.message : "Failed to refresh office data.");
+    }
   }, [loadCategoryCount, loadFinanceSummary, loadKycCount]);
 
   useEffect(() => {
@@ -89,16 +99,23 @@ export default function AdminDashboardPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [router, loadOffice]);
+  }, [loadOffice, router]);
 
   async function createCategory() {
+    if (!categoryName.trim()) {
+      setTone("error");
+      setStatus("Enter a category name.");
+      return;
+    }
+
     setTone("info");
     setStatus("Creating category...");
-    const res = await apiPost<CategoryResponse>("/categories", { name: categoryName, kind: "PHYSICAL" });
+    const res = await apiPost<CategoryResponse>("/categories", { name: categoryName.trim(), kind: "PHYSICAL" });
     if (!res.ok || !res.data) {
       setTone("error");
-      return setStatus(`Failed: ${res.error}`);
+      return setStatus(res.error ?? "Failed to create category.");
     }
+    setCategoryName("");
     setTone("success");
     setStatus(`Created category: ${res.data.category.name}`);
     await loadCategoryCount();
@@ -110,7 +127,7 @@ export default function AdminDashboardPage() {
     const res = await apiPost<CategoriesResponse>("/categories/bootstrap", {});
     if (!res.ok || !res.data) {
       setTone("error");
-      return setStatus(`Failed: ${res.error}`);
+      return setStatus(res.error ?? "Failed to sync categories.");
     }
     setCategoryCount(res.data.categories.length);
     setTone("success");
@@ -118,73 +135,74 @@ export default function AdminDashboardPage() {
   }
 
   const topVendors = useMemo(() => vendors.slice(0, 5), [vendors]);
+  const identity = formatIdentity(user);
 
   return (
     <AppShell>
       <div className="grid gap-5">
-        <section className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.14),_transparent_30%),linear-gradient(145deg,#ffffff_0%,#f8fafc_100%)] p-6 shadow-[0_20px_45px_rgba(15,23,42,0.06)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Zota Office</p>
-          <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] text-slate-950">Admin the full system from one office view</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            This is the operational center for KYC approvals, category governance, vendor health, and finance supervision across Zota Consumer and Zota Business.
+        <section className="rounded-[32px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.12),_transparent_28%),linear-gradient(145deg,#050816_0%,#0b1220_55%,#111827_100%)] p-7 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-100">Zota Office</p>
+          <h2 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white">Good day, {identity}</h2>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
+            The office is responsible for marketplace trust, category governance, vendor finance, and platform oversight across all Zota products.
           </p>
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-3">
             <button className="bm-btn bm-btn-primary" onClick={loadOffice}>Refresh office</button>
-            <Link className="bm-btn" href="/kyc">Open KYC queue</Link>
-            <Link className="bm-btn" href="/finance">Open finance</Link>
+            <Link className="bm-btn" href="/kyc">Verification queue</Link>
+            <Link className="bm-btn" href="/finance">Finance desk</Link>
           </div>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">KYC queue</p>
-            <p className="mt-3 text-3xl font-black tracking-[-0.05em] text-slate-950">{pendingKycCount}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Verification queue</p>
+            <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{pendingKycCount}</p>
             <p className="mt-2 text-sm text-slate-500">Pending approvals needing office action.</p>
           </article>
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Total submissions</p>
-            <p className="mt-3 text-3xl font-black tracking-[-0.05em] text-slate-950">{submissionCount}</p>
-            <p className="mt-2 text-sm text-slate-500">Full KYC history in the system.</p>
+            <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{submissionCount}</p>
+            <p className="mt-2 text-sm text-slate-500">Full verification history in the system.</p>
           </article>
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Approved businesses</p>
-            <p className="mt-3 text-3xl font-black tracking-[-0.05em] text-slate-950">{approvedVendors}</p>
-            <p className="mt-2 text-sm text-slate-500">Businesses currently trusted to operate.</p>
+            <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{approvedVendors}</p>
+            <p className="mt-2 text-sm text-slate-500">Businesses cleared to operate on the marketplace.</p>
           </article>
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Live category count</p>
-            <p className="mt-3 text-3xl font-black tracking-[-0.05em] text-slate-950">{categoryCount}</p>
-            <p className="mt-2 text-sm text-slate-500">Discovery taxonomy powering search and vendor setup.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Category count</p>
+            <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{categoryCount}</p>
+            <p className="mt-2 text-sm text-slate-500">Taxonomy driving vendor setup and consumer discovery.</p>
           </article>
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+          <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Category governance</p>
-            <h3 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-950">Add and standardize marketplace categories</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Categories drive vendor onboarding, dispatch classification, and consumer discovery. Keep them clean and consistent.
+            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Add and standardize live marketplace categories</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              Categories control how vendors publish services, how dispatch requests are classified, and how customers discover businesses.
             </p>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <input className="bm-input" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} placeholder="Category name" />
               <button className="bm-btn bm-btn-success" onClick={createCategory}>Create category</button>
             </div>
-            <button className="mt-3 bm-btn bm-btn-primary" onClick={bootstrapDefaultCategories}>Sync default categories</button>
+            <button className="mt-3 bm-btn" onClick={bootstrapDefaultCategories}>Sync default categories</button>
           </article>
 
-          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+          <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Finance overview</p>
-            <h3 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-950">Vendor money inside the system</h3>
-            <div className="mt-4 rounded-[22px] bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Combined vendor balances</p>
-              <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">NGN {vendorBalance.toLocaleString()}</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Vendor money currently inside the system</h3>
+            <div className="mt-4 rounded-[24px] bg-slate-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Combined vendor balances</p>
+              <p className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">NGN {vendorBalance.toLocaleString()}</p>
             </div>
             <div className="mt-4 space-y-3">
               {topVendors.length === 0 ? (
                 <p className="text-sm text-slate-500">No vendor finance data loaded yet.</p>
               ) : (
                 topVendors.map((vendor) => (
-                  <div key={vendor.vendorId} className="rounded-[18px] border border-slate-200 p-4">
+                  <div key={vendor.vendorId} className="rounded-[20px] border border-slate-200 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-semibold text-slate-950">{vendor.businessName ?? "Unnamed business"}</p>
