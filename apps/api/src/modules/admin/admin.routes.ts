@@ -1,8 +1,24 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { authMiddleware } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/requireRole.js";
 import { prisma } from "../../prisma.js";
 import { HttpError } from "../../utils/http.js";
+
+function isMissingTableError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021";
+}
+
+async function safeQuery<T>(query: Promise<T>, fallback: T) {
+  try {
+    return await query;
+  } catch (error) {
+    if (isMissingTableError(error)) {
+      return fallback;
+    }
+    throw error;
+  }
+}
 
 export function adminRoutes() {
   const r = Router();
@@ -29,8 +45,8 @@ export function adminRoutes() {
         prisma.kycSubmission.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
         prisma.category.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
         prisma.request.findMany({ orderBy: { updatedAt: "desc" }, take: 120 }),
-        prisma.conversation.findMany({ orderBy: { lastMessageAt: "desc" }, take: 40 }),
-        prisma.chatMessage.findMany({ orderBy: { createdAt: "desc" }, take: 40 }),
+        safeQuery(prisma.conversation.findMany({ orderBy: { lastMessageAt: "desc" }, take: 40 }), []),
+        safeQuery(prisma.chatMessage.findMany({ orderBy: { createdAt: "desc" }, take: 40 }), []),
         prisma.kycSubmission.findMany({
           orderBy: { createdAt: "desc" },
           take: 5,
@@ -143,7 +159,7 @@ export function adminRoutes() {
 
   r.get("/communications", async (_req, res, next) => {
     try {
-      const rows = await prisma.conversation.findMany({
+      const rows = await safeQuery(prisma.conversation.findMany({
         include: {
           consumer: { select: { id: true, email: true, phone: true, fullName: true } },
           vendorUser: { select: { id: true, email: true, phone: true, fullName: true } },
@@ -157,7 +173,7 @@ export function adminRoutes() {
         },
         orderBy: { lastMessageAt: "desc" },
         take: 50,
-      });
+      }), []);
 
       res.json({ ok: true, conversations: rows });
     } catch (e) {
