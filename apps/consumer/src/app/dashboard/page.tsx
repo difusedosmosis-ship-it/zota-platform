@@ -119,9 +119,12 @@ export default function ConsumerDashboardPage() {
     () =>
       featuredVendors.slice(0, 3).map((vendor, index) => ({
         id: vendor.id,
+        vendorId: vendor.id,
+        serviceId: vendor.services[0]?.id ?? "",
         title: vendor.businessName ?? "Verified business",
         subtitle: vendor.services[0]?.title ?? vendor.city ?? "Business profile",
         badge: vendor.services[0]?.category.name ?? "Business",
+        city: vendor.city ?? "Nigeria",
         rating: ["4.9", "4.8", "4.7"][index % 3],
         image: vendor.services[0]?.coverImageUrl || visualCards[index % visualCards.length].image,
       })),
@@ -179,6 +182,26 @@ export default function ConsumerDashboardPage() {
     const params = new URLSearchParams();
     if (prompt) params.set("q", prompt);
     router.push(`/assistant${params.toString() ? `?${params.toString()}` : ""}`);
+  }
+
+  function buildVendorHref(card: {
+    vendorId: string;
+    serviceId?: string;
+    title: string;
+    subtitle: string;
+    badge: string;
+    image: string;
+    city?: string;
+  }) {
+    const params = new URLSearchParams({
+      businessName: card.title,
+      serviceTitle: card.subtitle,
+      category: card.badge,
+      image: card.image,
+      city: card.city ?? "Nigeria",
+    });
+    if (card.serviceId) params.set("serviceId", card.serviceId);
+    return `/vendors/${card.vendorId}?${params.toString()}`;
   }
 
   function detectMyLocation() {
@@ -299,10 +322,14 @@ export default function ConsumerDashboardPage() {
           {nearbyPreview.length > 0 && (
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {nearbyPreview.map((vendor) => (
-                <article key={vendor.id} className="rounded-[22px] border border-slate-200 p-4">
+                <Link
+                  key={vendor.id}
+                  href={`/vendors/${vendor.id}?businessName=${encodeURIComponent(vendor.businessName ?? "Verified provider")}&serviceTitle=${encodeURIComponent("Open this vendor to request service")}&category=${encodeURIComponent("Nearby service")}&city=${encodeURIComponent(vendor.city ?? "Nearby")}`}
+                  className="rounded-[22px] border border-slate-200 p-4 transition hover:border-emerald-200 hover:bg-emerald-50/30"
+                >
                   <h3 className="text-base font-semibold text-slate-950">{vendor.businessName ?? "Verified provider"}</h3>
                   <p className="mt-1 text-sm text-slate-500">{vendor.city ?? "Nearby"} · {vendor.distanceKm}km away</p>
-                </article>
+                </Link>
               ))}
             </div>
           )}
@@ -317,7 +344,11 @@ export default function ConsumerDashboardPage() {
           </div>
           <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
             {(featuredVendorCards.length ? featuredVendorCards : visualCards).map((card) => (
-              <article key={card.id} className="relative min-h-[280px] min-w-[280px] overflow-hidden rounded-[28px] shadow-[0_24px_45px_rgba(15,23,42,0.18)]">
+              <Link
+                key={card.id}
+                href={"vendorId" in card ? buildVendorHref(card) : `/assistant?q=${encodeURIComponent(card.title)}`}
+                className="relative min-h-[280px] min-w-[280px] overflow-hidden rounded-[28px] shadow-[0_24px_45px_rgba(15,23,42,0.18)]"
+              >
                 <img src={card.image} alt={card.title} className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08)_0%,rgba(15,23,42,0.22)_36%,rgba(15,23,42,0.82)_100%)]" />
                 <div className="absolute left-4 top-4 rounded-2xl bg-[#f9f34c] px-3 py-2 text-sm font-black text-slate-950 shadow">★ {card.rating}</div>
@@ -325,8 +356,11 @@ export default function ConsumerDashboardPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">{card.badge}</p>
                   <h3 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">{card.title}</h3>
                   <p className="mt-2 text-sm text-white/80">{card.subtitle}</p>
+                  <span className="mt-4 inline-flex w-fit rounded-full bg-white/12 px-3 py-2 text-sm font-medium text-white">
+                    Open service
+                  </span>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         </section>
