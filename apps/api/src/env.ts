@@ -17,7 +17,7 @@ export const env = {
   JWT_SECRET: must("JWT_SECRET"),
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? "7d",
 
-  OFFER_EXPIRES_SECONDS: Number(process.env.OFFER_EXPIRES_SECONDS ?? "300"),
+  OFFER_EXPIRES_SECONDS: Math.max(Number(process.env.OFFER_EXPIRES_SECONDS ?? "300"), 300),
 
   // ✅ Booking
   BOOKING_QUOTE_EXPIRES_MINUTES: Number(process.env.BOOKING_QUOTE_EXPIRES_MINUTES ?? "10"),
