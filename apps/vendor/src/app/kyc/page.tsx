@@ -70,7 +70,7 @@ export default function VendorKycPage() {
   }
 
   async function submitKyc() {
-    if ((!idDocUrl && !ninNumber) || !businessDocUrl || !skillProofUrl) {
+    if ((!idDocUrl && !ninNumber) || !skillProofUrl) {
       setTone("error");
       setStatus("Provide NIN number or ID upload, plus proof of address. Business registration certificate is optional.");
       return;

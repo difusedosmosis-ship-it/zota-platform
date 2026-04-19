@@ -79,8 +79,8 @@ export default function AdminKycPage() {
 
   const grouped = useMemo(
     () => ({
-      pending: submissions.filter((s) => s.status === "PENDING" || s.status === "UNDER_REVIEW"),
-      reviewed: submissions.filter((s) => s.status !== "PENDING" && s.status !== "UNDER_REVIEW"),
+      pending: submissions.filter((s) => s.status === "SUBMITTED" || s.status === "UNDER_REVIEW"),
+      reviewed: submissions.filter((s) => s.status !== "SUBMITTED" && s.status !== "UNDER_REVIEW"),
     }),
     [submissions],
   );
