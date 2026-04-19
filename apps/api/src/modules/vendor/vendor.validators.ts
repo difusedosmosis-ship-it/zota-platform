@@ -5,6 +5,15 @@ import { z } from "zod";
  * so we can chain .int().min().max() without TS errors.
  */
 const zCoerceNumber = () => z.coerce.number().finite();
+const optionalString = () =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return value;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? undefined : trimmed;
+    },
+    z.string().min(8).optional(),
+  );
 
 export const UpdateVendorProfileSchema = z
   .object({
@@ -24,15 +33,28 @@ export const UpdateVendorProfileSchema = z
 
 export const SubmitKycSchema = z.object({
   // NIN / government identity document
-  idDocUrl: z.string().min(8).optional(),
+  idDocUrl: optionalString(),
   // Optional NIN number if user prefers number-first validation
-  ninNumber: z.string().min(11).max(11).optional(),
+  ninNumber: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return value;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? undefined : trimmed;
+    },
+    z.string().min(11).max(11).optional(),
+  ),
   // Business registration certificate (optional for unregistered skilled workers)
-  businessDocUrl: z.string().min(8).optional(),
+  businessDocUrl: optionalString(),
   // Proof of address
-  skillProofUrl: z.string().min(8),
+  skillProofUrl: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return value;
+      return value.trim();
+    },
+    z.string().min(8),
+  ),
   // Optional selfie for stronger anti-fraud
-  selfieUrl: z.string().min(8).optional(),
+  selfieUrl: optionalString(),
 }).refine((v) => !!v.idDocUrl || !!v.ninNumber, {
   message: "Provide either idDocUrl or ninNumber",
 });

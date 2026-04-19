@@ -224,30 +224,36 @@ export function adminRoutes() {
         take: 100,
       });
 
-      const rows = await Promise.all(
-        vendors.map(async (vendor) => {
-          const ledger = await prisma.walletLedger.findMany({
-            where: { userId: vendor.userId },
-            orderBy: { createdAt: "desc" },
-            take: 200,
-          });
+      const userIds = vendors.map((vendor) => vendor.userId);
+      const ledgerRows = userIds.length
+        ? await prisma.walletLedger.findMany({
+            where: { userId: { in: userIds } },
+            select: { userId: true, amount: true },
+          })
+        : [];
 
-          const balance = ledger.reduce((sum, row) => sum + row.amount, 0);
-          const earnings = ledger.filter((row) => row.amount > 0).reduce((sum, row) => sum + row.amount, 0);
-          const payouts = ledger.filter((row) => row.amount < 0).reduce((sum, row) => sum + Math.abs(row.amount), 0);
+      const ledgerByUser = new Map<string, { balance: number; earnings: number; payouts: number }>();
+      for (const row of ledgerRows) {
+        const current = ledgerByUser.get(row.userId) ?? { balance: 0, earnings: 0, payouts: 0 };
+        current.balance += row.amount;
+        if (row.amount > 0) current.earnings += row.amount;
+        if (row.amount < 0) current.payouts += Math.abs(row.amount);
+        ledgerByUser.set(row.userId, current);
+      }
 
-          return {
-            vendorId: vendor.id,
-            userId: vendor.userId,
-            businessName: vendor.businessName,
-            email: vendor.user.email,
-            kycStatus: vendor.kycStatus,
-            balance,
-            earnings,
-            payouts,
-          };
-        }),
-      );
+      const rows = vendors.map((vendor) => {
+        const totals = ledgerByUser.get(vendor.userId) ?? { balance: 0, earnings: 0, payouts: 0 };
+        return {
+          vendorId: vendor.id,
+          userId: vendor.userId,
+          businessName: vendor.businessName,
+          email: vendor.user.email,
+          kycStatus: vendor.kycStatus,
+          balance: totals.balance,
+          earnings: totals.earnings,
+          payouts: totals.payouts,
+        };
+      });
 
       res.json({ ok: true, vendors: rows });
     } catch (e) {
