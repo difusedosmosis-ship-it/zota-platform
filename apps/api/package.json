@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "sh -c 'DIRECT_URL=\"$DATABASE_URL\" prisma db push --skip-generate || echo \"Prisma db push skipped\"; node dist/index.js'",
+    "start": "node scripts/render-start.mjs",
     "test:smoke": "npm run build && node --test tests/*.test.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
