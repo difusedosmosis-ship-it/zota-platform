@@ -55,7 +55,7 @@ export default function AdminNotificationsPage() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       void loadNotifications();
-    }, 15000);
+    }, 5000);
     return () => window.clearInterval(interval);
   }, [loadNotifications]);
 

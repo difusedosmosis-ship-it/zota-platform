@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet } from "@/lib/api";
+import { readNotifications, type AppNotification } from "@/lib/notifications";
 import { requireRole } from "@/lib/route-guard";
 
 type VendorMeResponse = {
@@ -37,6 +38,7 @@ export default function VendorNotificationsPage() {
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [vendor, setVendor] = useState<VendorMeResponse["vendor"] | null>(null);
   const [offer, setOffer] = useState<OfferResponse["offer"]>(null);
+  const [items, setItems] = useState<AppNotification[]>(() => readNotifications());
 
   const loadAlerts = useCallback(async () => {
     setTone("info");
@@ -52,6 +54,7 @@ export default function VendorNotificationsPage() {
 
     setVendor(vendorRes.data.vendor);
     if (offerRes.ok && offerRes.data) setOffer(offerRes.data.offer);
+    setItems(readNotifications());
     setTone("success");
     setStatus("Alerts ready.");
   }, []);
@@ -67,6 +70,13 @@ export default function VendorNotificationsPage() {
       cancelled = true;
     };
   }, [loadAlerts, router]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadAlerts();
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [loadAlerts]);
 
   return (
     <AppShell>
@@ -120,6 +130,15 @@ export default function VendorNotificationsPage() {
               <p className="mt-2 text-sm text-slate-600">Your business is ready in {vendor.city ?? "your area"} and waiting for the next customer request.</p>
             </article>
           ) : null}
+
+          {items.map((item) => (
+            <Link key={item.id} href={item.href ?? "/requests"} className="block rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Activity</p>
+              <h2 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-950">{item.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+              <p className="mt-3 text-xs text-slate-400">{new Date(item.createdAt).toLocaleString()}</p>
+            </Link>
+          ))}
         </div>
       </div>
       <StatusToast message={status} tone={tone} />

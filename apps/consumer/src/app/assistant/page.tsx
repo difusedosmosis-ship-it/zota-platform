@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
+import { pushNotification } from "@/lib/notifications";
 import { readSession, type SessionUser } from "@/lib/session";
 import { requireRole } from "@/lib/route-guard";
 
@@ -279,6 +280,11 @@ export default function ConsumerAssistantPage() {
 
     setTone("success");
     setStatus(`Request ${res.data!.id.slice(0, 8)} created.`);
+    pushNotification({
+      title: "Request sent",
+      body: `${prompt || category.name} request has been sent to the selected business.`,
+      href: "/requests",
+    });
   }
 
   function startVoiceInput() {

@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
+import { pushNotification } from "@/lib/notifications";
 import { readSession, type SessionUser } from "@/lib/session";
 import { requireRole } from "@/lib/route-guard";
 
@@ -145,6 +146,11 @@ export default function ConsumerVendorDetailPage() {
 
     setTone("success");
     setStatus(`Request ${res.data.id.slice(0, 8)} created.`);
+    pushNotification({
+      title: "Request sent",
+      body: `${serviceTitle} request has been sent to ${businessName}.`,
+      href: "/requests",
+    });
     router.push(`/requests?created=${encodeURIComponent(res.data.id)}`);
   }
 

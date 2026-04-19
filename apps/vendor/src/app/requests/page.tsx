@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
+import { pushNotification } from "@/lib/notifications";
 import { requireRole } from "@/lib/route-guard";
 
 type VendorRequest = {
@@ -103,6 +104,13 @@ export default function VendorRequestsPage() {
     };
   }, [refresh, router]);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void refresh();
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [refresh]);
+
   async function acceptOffer() {
     if (!latestOffer) return;
     setBusyAction("accept");
@@ -115,6 +123,11 @@ export default function VendorRequestsPage() {
       setStatus(`Failed: ${res.error}`);
       return;
     }
+    pushNotification({
+      title: "Request accepted",
+      body: `${latestOffer.request.category} has moved into your active jobs queue.`,
+      href: "/requests",
+    });
     await refresh();
   }
 
@@ -130,6 +143,11 @@ export default function VendorRequestsPage() {
       setStatus(`Failed: ${res.error}`);
       return;
     }
+    pushNotification({
+      title: "Request declined",
+      body: `${latestOffer.request.category} was declined and removed from your pending queue.`,
+      href: "/requests",
+    });
     await refresh();
   }
 
