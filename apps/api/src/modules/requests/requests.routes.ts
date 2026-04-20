@@ -415,7 +415,7 @@ export function requestsRoutes() {
         return nextRow;
       });
 
-      notifyUser(updated.consumerId, "request_update", { request: updated });
+      notifyUser(updated.consumerId, "request_update", { request: updated, settlementAmount: finalAmount });
       notifyVendor(vendor.id, "request_update", { request: updated });
       await notifyAdmins("office:job_completed", {
         requestId: updated.id,

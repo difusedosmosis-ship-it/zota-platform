@@ -11,6 +11,9 @@ export function authRoutes() {
   r.post("/register", async (req, res, next) => {
     try {
       const input = RegisterSchema.parse(req.body);
+      if (input.role === "ADMIN") {
+        throw new HttpError(403, "Admin accounts can only be created from inside Zota Office");
+      }
 
       const existing = await prisma.user.findFirst({
         where: {

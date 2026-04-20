@@ -12,6 +12,7 @@ import {
   UpdateVendorProfileSchema,
   SubmitKycSchema,
   CreateServiceSchema,
+  UpdateServiceSchema,
 } from "./vendor.validators.js";
 
 // Small helper
@@ -379,11 +380,59 @@ export function vendorRoutes() {
           priceFrom: input.priceFrom ?? null,
           coverImageUrl: input.coverImageUrl ?? null,
           galleryImageUrls: input.galleryImageUrls ?? [],
-          isActive: input.isActive ?? true,
+          isActive: input.isActive ?? false,
         },
       });
 
       res.json({ ok: true, service });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.patch("/services/:id", async (req: any, res, next) => {
+    try {
+      const input = UpdateServiceSchema.parse(req.body);
+      const vendor = await prisma.vendorProfile.findUnique({
+        where: { userId: req.user.id },
+      });
+      if (!vendor) throw new HttpError(404, "Vendor not found");
+
+      const service = await prisma.vendorService.findUnique({
+        where: { id: req.params.id },
+      });
+      if (!service || service.vendorId !== vendor.id) throw new HttpError(404, "Service not found");
+
+      const updated = await prisma.vendorService.update({
+        where: { id: service.id },
+        data: {
+          ...input,
+          coverImageUrl: input.coverImageUrl ?? null,
+          galleryImageUrls: input.galleryImageUrls ?? service.galleryImageUrls,
+          isActive: false,
+        },
+      });
+
+      res.json({ ok: true, service: updated });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.delete("/services/:id", async (req: any, res, next) => {
+    try {
+      const vendor = await prisma.vendorProfile.findUnique({
+        where: { userId: req.user.id },
+      });
+      if (!vendor) throw new HttpError(404, "Vendor not found");
+
+      const service = await prisma.vendorService.findUnique({
+        where: { id: req.params.id },
+      });
+      if (!service || service.vendorId !== vendor.id) throw new HttpError(404, "Service not found");
+
+      await prisma.vendorService.delete({ where: { id: service.id } });
+      res.json({ ok: true });
     } catch (e) {
       next(e);
     }

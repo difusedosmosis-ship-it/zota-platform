@@ -55,6 +55,7 @@ type WsPacket = {
   event: string;
   payload?: {
     request?: RequestRow;
+    settlementAmount?: number;
     requestId?: string;
     vendorId?: string;
     lat?: number;
@@ -140,8 +141,11 @@ export default function RequestsPage() {
             if (packet.event === "request_update" && packet.payload?.request) {
               mergeRequest(packet.payload.request);
               pushNotification({
-                title: "Request Updated",
-                body: `${packet.payload.request.category} is now ${packet.payload.request.status.replaceAll("_", " ").toLowerCase()}.`,
+                title: packet.payload.request.status === "COMPLETED" && typeof packet.payload.settlementAmount === "number" ? "Service settled" : "Request Updated",
+                body:
+                  packet.payload.request.status === "COMPLETED" && typeof packet.payload.settlementAmount === "number"
+                    ? `NGN ${packet.payload.settlementAmount.toLocaleString()} has been deducted from your wallet to settle ${packet.payload.request.category}.`
+                    : `${packet.payload.request.category} is now ${packet.payload.request.status.replaceAll("_", " ").toLowerCase()}.`,
                 href: "/requests",
               });
               return;

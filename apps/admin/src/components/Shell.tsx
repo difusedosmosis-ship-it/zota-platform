@@ -66,8 +66,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const sectionTitle =
     pathname.startsWith("/kyc")
       ? "Verification Queue"
+      : pathname.startsWith("/catalog")
+        ? "Catalog Review"
       : pathname.startsWith("/finance")
         ? "Finance Desk"
+        : pathname.startsWith("/team")
+          ? "Office Users"
         : pathname.startsWith("/messages")
           ? "Communications"
           : pathname.startsWith("/notifications")
@@ -89,7 +93,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mt-8 flex flex-col gap-2">
           <NavLink href="/dashboard" label="Overview" />
           <NavLink href="/kyc" label="Verification Queue" />
+          <NavLink href="/catalog" label="Catalog Review" />
           <NavLink href="/finance" label="Finance Desk" />
+          <NavLink href="/team" label="Office Users" />
           <NavLink href="/messages" label="Communications" />
           <NavLink href="/notifications" label="Notifications" />
         </div>
@@ -97,8 +103,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mt-auto rounded-[24px] border border-slate-200 bg-white/80 p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Signed in</p>
           <p className="mt-2 text-base font-semibold text-slate-950">{identity}</p>
-          <p className="mt-1 text-sm text-slate-500">{session?.user.email ?? session?.user.phone ?? "Admin"}</p>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{session?.user.role}</p>
+          <p className="mt-1 text-sm text-slate-500">{session?.user.email ?? session?.user.phone ?? "Office operator"}</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Office operator</p>
           <button className="mt-4 bm-btn w-full" onClick={logout}>Logout</button>
         </div>
       </aside>

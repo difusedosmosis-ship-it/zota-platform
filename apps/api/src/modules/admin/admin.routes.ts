@@ -4,6 +4,8 @@ import { authMiddleware } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/requireRole.js";
 import { prisma } from "../../prisma.js";
 import { HttpError } from "../../utils/http.js";
+import { hashPassword } from "../auth/auth.service.js";
+import { newId } from "../../utils/ids.js";
 
 function isMissingTableError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021";
@@ -176,6 +178,114 @@ export function adminRoutes() {
       }), []);
 
       res.json({ ok: true, conversations: rows });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.get("/catalog/review", async (_req, res, next) => {
+    try {
+      const [services, listings] = await Promise.all([
+        prisma.vendorService.findMany({
+          include: {
+            category: true,
+            vendor: { include: { user: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 100,
+        }),
+        prisma.bookingListing.findMany({
+          where: { provider: "LOCAL" },
+          include: {
+            vendor: { include: { user: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 100,
+        }),
+      ]);
+
+      res.json({ ok: true, services, listings });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.get("/users", async (_req, res, next) => {
+    try {
+      const rows = await prisma.user.findMany({
+        where: { role: "ADMIN" },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          fullName: true,
+          createdAt: true,
+        },
+      });
+      res.json({ ok: true, users: rows });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.post("/users", async (req, res, next) => {
+    try {
+      const email = String(req.body?.email ?? "").trim().toLowerCase();
+      const password = String(req.body?.password ?? "");
+      const fullName = String(req.body?.fullName ?? "").trim();
+
+      if (!email || !email.includes("@")) throw new HttpError(400, "Valid email is required");
+      if (password.length < 8) throw new HttpError(400, "Password must be at least 8 characters");
+      if (!fullName) throw new HttpError(400, "Full name is required");
+
+      const existing = await prisma.user.findFirst({
+        where: { email },
+      });
+      if (existing) throw new HttpError(409, "This office email already exists");
+
+      const user = await prisma.user.create({
+        data: {
+          id: newId("usr"),
+          role: "ADMIN",
+          email,
+          passwordHash: await hashPassword(password),
+          fullName,
+        },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          fullName: true,
+          createdAt: true,
+        },
+      });
+
+      res.json({ ok: true, user });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.post("/catalog/services/:id/publish", async (req, res, next) => {
+    try {
+      const row = await prisma.vendorService.update({
+        where: { id: req.params.id },
+        data: { isActive: true },
+      });
+      res.json({ ok: true, service: row });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.post("/catalog/services/:id/unpublish", async (req, res, next) => {
+    try {
+      const row = await prisma.vendorService.update({
+        where: { id: req.params.id },
+        data: { isActive: false },
+      });
+      res.json({ ok: true, service: row });
     } catch (e) {
       next(e);
     }

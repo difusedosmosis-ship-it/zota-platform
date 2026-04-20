@@ -64,7 +64,19 @@ export const CreateServiceSchema = z.object({
   title: z.string().min(2),
   pricingType: z.enum(["fixed", "from", "quote"]).default("from"),
   priceFrom: zCoerceNumber().int().min(0).optional(),
-  coverImageUrl: z.string().min(8).optional(),
+  coverImageUrl: optionalString(),
   galleryImageUrls: z.array(z.string().min(8)).max(5).optional(),
   isActive: z.boolean().optional(),
 });
+
+export const UpdateServiceSchema = z
+  .object({
+    categoryId: z.string().min(3).optional(),
+    title: z.string().min(2).optional(),
+    pricingType: z.enum(["fixed", "from", "quote"]).optional(),
+    priceFrom: zCoerceNumber().int().min(0).optional(),
+    coverImageUrl: optionalString(),
+    galleryImageUrls: z.array(z.string().min(8)).max(5).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: "No fields to update" });

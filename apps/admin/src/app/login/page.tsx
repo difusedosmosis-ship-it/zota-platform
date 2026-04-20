@@ -26,7 +26,6 @@ function friendlyError(error?: string) {
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
@@ -34,11 +33,8 @@ export default function AdminLoginPage() {
   const [busy, setBusy] = useState(false);
 
   const subtitle = useMemo(
-    () =>
-      mode === "login"
-        ? "Sign into the office to review verification, finance, and platform operations."
-        : "Create the first office account or register a new admin operator.",
-    [mode],
+    () => "Sign into the office to review verification, finance, catalog approvals, and platform operations.",
+    [],
   );
 
   async function submit() {
@@ -56,17 +52,9 @@ export default function AdminLoginPage() {
 
     setBusy(true);
     setTone("info");
-    setStatus(mode === "login" ? "Signing in..." : "Creating office account...");
+    setStatus("Signing in...");
 
-    const res =
-      mode === "login"
-        ? await apiPost<AuthResponse>("/api/session/login", { email: emailValue, password })
-        : await apiPost<AuthResponse>("/api/session/register", {
-            role: "ADMIN",
-            email: emailValue,
-            password,
-            fullName: "Office Admin",
-          });
+    const res = await apiPost<AuthResponse>("/api/session/login", { email: emailValue, password });
 
     setBusy(false);
     if (!res.ok || !res.data) {
@@ -108,12 +96,8 @@ export default function AdminLoginPage() {
         </section>
 
         <section className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-            {mode === "login" ? "Office Sign In" : "Office Sign Up"}
-          </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
-            {mode === "login" ? "Sign into Zota Office" : "Create an office account"}
-          </h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Office Sign In</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-slate-950">Sign into Zota Office</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">{subtitle}</p>
 
           <div className="mt-6 space-y-4">
@@ -123,7 +107,7 @@ export default function AdminLoginPage() {
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button className="bm-btn bm-btn-primary" disabled={busy} onClick={submit}>
-              {busy ? (mode === "login" ? "Signing in..." : "Creating account...") : mode === "login" ? "Login" : "Create office account"}
+              {busy ? "Signing in..." : "Login"}
             </button>
             <a className="text-sm font-semibold text-emerald-700" href="mailto:support@zota.app?subject=Zota%20Office%20password%20reset">
               Forgot password?
@@ -131,10 +115,7 @@ export default function AdminLoginPage() {
           </div>
 
           <p className="mt-5 text-sm text-slate-500">
-            {mode === "login" ? "No office account yet? " : "Already have an office account? "}
-            <button className="font-semibold text-slate-950" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
-              {mode === "login" ? "Create one here" : "Sign in here"}
-            </button>
+            Office accounts are created from inside Zota Office by an existing administrator.
           </p>
         </section>
       </div>

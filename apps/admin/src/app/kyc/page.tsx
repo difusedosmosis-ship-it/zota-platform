@@ -11,7 +11,16 @@ type KycSubmission = {
   id: string;
   status: string;
   reviewerNote: string | null;
-  vendor: { businessName: string | null; user: { email: string | null } };
+  idDocUrl: string | null;
+  selfieUrl: string | null;
+  businessDocUrl: string | null;
+  skillProofUrl: string | null;
+  createdAt: string;
+  vendor: {
+    businessName: string | null;
+    city?: string | null;
+    user: { email: string | null };
+  };
 };
 type KycListResponse = { ok: boolean; submissions: KycSubmission[] };
 
@@ -85,6 +94,16 @@ export default function AdminKycPage() {
     [submissions],
   );
 
+  function renderDocumentLink(label: string, href: string | null) {
+    if (!href) return <p className="text-sm text-slate-400">{label}: not provided</p>;
+    if (href.startsWith("NIN:")) return <p className="text-sm text-slate-700">{label}: {href.replace("NIN:", "")}</p>;
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className="text-sm font-medium text-emerald-700 underline underline-offset-4">
+        Open {label}
+      </a>
+    );
+  }
+
   return (
     <AppShell>
       <div className="grid gap-5">
@@ -129,6 +148,7 @@ export default function AdminKycPage() {
                     <div>
                       <p className="text-lg font-semibold text-slate-950">{s.vendor.businessName ?? "Unnamed business"}</p>
                       <p className="mt-1 text-sm text-slate-500">{s.vendor.user.email ?? "no-email"}</p>
+                      {s.vendor.city ? <p className="mt-1 text-sm text-slate-500">{s.vendor.city}</p> : null}
                       <p className="mt-2 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">{s.status}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -139,6 +159,12 @@ export default function AdminKycPage() {
                         {busyId === `reject:${s.id}` ? "Rejecting..." : "Reject"}
                       </button>
                     </div>
+                  </div>
+                  <div className="mt-4 grid gap-3 rounded-[20px] bg-slate-50 p-4 md:grid-cols-2">
+                    {renderDocumentLink("ID / NIN", s.idDocUrl)}
+                    {renderDocumentLink("Business certificate", s.businessDocUrl)}
+                    {renderDocumentLink("Proof of address", s.skillProofUrl)}
+                    {renderDocumentLink("Selfie", s.selfieUrl)}
                   </div>
                 </article>
               ))
@@ -163,6 +189,12 @@ export default function AdminKycPage() {
                       <p className="text-sm font-semibold text-slate-900">{s.status}</p>
                       {s.reviewerNote ? <p className="mt-1 text-xs text-slate-400">{s.reviewerNote}</p> : null}
                     </div>
+                  </div>
+                  <div className="mt-3 grid gap-2 rounded-[18px] bg-slate-50 p-3 md:grid-cols-2">
+                    {renderDocumentLink("ID / NIN", s.idDocUrl)}
+                    {renderDocumentLink("Business certificate", s.businessDocUrl)}
+                    {renderDocumentLink("Proof of address", s.skillProofUrl)}
+                    {renderDocumentLink("Selfie", s.selfieUrl)}
                   </div>
                 </article>
               ))

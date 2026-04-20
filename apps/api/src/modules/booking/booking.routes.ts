@@ -63,7 +63,7 @@ export function bookingRoutes() {
         vendorId: vendor.id,
         pricePerDay: input.pricePerDay,
         currency: input.currency,
-        isActive: input.isActive ?? true,
+        isActive: input.isActive ?? false,
       });
 
       res.json({ ok: true, listing: row });
@@ -84,6 +84,37 @@ export function bookingRoutes() {
       });
 
       res.json({ ok: true, listings: rows });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.patch("/vendor/listings/:id", authMiddleware, requireRole("VENDOR"), async (req: any, res, next) => {
+    try {
+      const patch = UpdateListingSchema.parse(req.body);
+      const vendor = await prisma.vendorProfile.findUnique({ where: { userId: req.user.id } });
+      if (!vendor) throw new HttpError(404, "Vendor not found");
+
+      const listing = await getListingById(req.params.id);
+      if (listing.vendorId !== vendor.id) throw new HttpError(404, "Listing not found");
+
+      const row = await updateListing(req.params.id, { ...patch, isActive: false });
+      res.json({ ok: true, listing: row });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.delete("/vendor/listings/:id", authMiddleware, requireRole("VENDOR"), async (req: any, res, next) => {
+    try {
+      const vendor = await prisma.vendorProfile.findUnique({ where: { userId: req.user.id } });
+      if (!vendor) throw new HttpError(404, "Vendor not found");
+
+      const listing = await getListingById(req.params.id);
+      if (listing.vendorId !== vendor.id) throw new HttpError(404, "Listing not found");
+
+      await prisma.bookingListing.delete({ where: { id: listing.id } });
+      res.json({ ok: true });
     } catch (e) {
       next(e);
     }
