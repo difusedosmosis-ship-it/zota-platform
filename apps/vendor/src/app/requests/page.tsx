@@ -65,7 +65,8 @@ export default function VendorRequestsPage() {
   const [latestOffer, setLatestOffer] = useState<OfferResponse["offer"]>(null);
   const [status, setStatus] = useState("Loading requests...");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
-  const [busyAction, setBusyAction] = useState<null | "accept" | "decline">(null);
+  const [busyAction, setBusyAction] = useState<null | "accept" | "decline" | `start:${string}` | `complete:${string}`>(null);
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
 
   const activeRequests = useMemo(
     () => requests.filter((row) => ["ACCEPTED", "IN_PROGRESS", "OFFERED", "DISPATCHING"].includes(row.status)),
@@ -148,6 +149,53 @@ export default function VendorRequestsPage() {
       body: `${latestOffer.request.category} was declined and removed from your pending queue.`,
       href: "/requests",
     });
+    await refresh();
+  }
+
+  async function startJob(requestId: string) {
+    setBusyAction(`start:${requestId}`);
+    setTone("info");
+    setStatus("Starting job...");
+    const res = await apiPost<{ ok: boolean }>(`/requests/${requestId}/start`, {});
+    setBusyAction(null);
+    if (!res.ok) {
+      setTone("error");
+      setStatus(`Failed: ${res.error}`);
+      return;
+    }
+    pushNotification({
+      title: "Job started",
+      body: "The request has moved into active delivery.",
+      href: "/requests",
+    });
+    await refresh();
+  }
+
+  async function completeJob(requestId: string, category: string) {
+    const rawAmount = amounts[requestId] ?? "";
+    const amount = Number(rawAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setTone("error");
+      setStatus("Enter the final agreed amount before completing this job.");
+      return;
+    }
+
+    setBusyAction(`complete:${requestId}`);
+    setTone("info");
+    setStatus("Completing job and settling payment...");
+    const res = await apiPost<{ ok: boolean }>(`/requests/${requestId}/complete`, { amount });
+    setBusyAction(null);
+    if (!res.ok) {
+      setTone("error");
+      setStatus(`Failed: ${res.error}`);
+      return;
+    }
+    pushNotification({
+      title: "Job completed",
+      body: `${category} has been completed and payout recorded.`,
+      href: "/wallet",
+    });
+    setAmounts((current) => ({ ...current, [requestId]: "" }));
     await refresh();
   }
 
@@ -240,6 +288,44 @@ export default function VendorRequestsPage() {
                     <Link className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700" href={`/messages?requestId=${row.id}`}>
                       Message
                     </Link>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    {row.status === "ACCEPTED" ? (
+                      <button
+                        disabled={busyAction === `start:${row.id}`}
+                        className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                        onClick={() => void startJob(row.id)}
+                      >
+                        {busyAction === `start:${row.id}` ? "Starting..." : "Start job"}
+                      </button>
+                    ) : null}
+
+                    {row.status === "IN_PROGRESS" ? (
+                      <>
+                        <input
+                          inputMode="numeric"
+                          type="number"
+                          min="1"
+                          placeholder="Final amount"
+                          value={amounts[row.id] ?? ""}
+                          onChange={(e) =>
+                            setAmounts((current) => ({
+                              ...current,
+                              [row.id]: e.target.value,
+                            }))
+                          }
+                          className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none"
+                        />
+                        <button
+                          disabled={busyAction === `complete:${row.id}`}
+                          className="rounded-2xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                          onClick={() => void completeJob(row.id, row.category)}
+                        >
+                          {busyAction === `complete:${row.id}` ? "Completing..." : "Complete job"}
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </article>
               ))

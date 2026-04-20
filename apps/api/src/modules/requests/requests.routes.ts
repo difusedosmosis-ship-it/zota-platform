@@ -330,6 +330,9 @@ export function requestsRoutes() {
     try {
       const id = req.params.id;
       const finalAmount = Number(req.body?.amount);
+      if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+        throw new HttpError(400, "amount must be greater than 0");
+      }
 
       const vendor = await prisma.vendorProfile.findUnique({ where: { userId: req.user.id } });
       if (!vendor) throw new HttpError(404, "Vendor not found");
@@ -340,29 +343,73 @@ export function requestsRoutes() {
       if (row.status !== "IN_PROGRESS") throw new HttpError(400, "Request not in progress");
 
       const updated = await prisma.$transaction(async (tx) => {
+        const consumerLedger = await tx.walletLedger.findMany({
+          where: { userId: row.consumerId },
+          take: 500,
+        });
+        const consumerBalance = consumerLedger.reduce((sum, entry) => sum + entry.amount, 0);
+        if (consumerBalance < finalAmount) {
+          throw new HttpError(400, "Consumer wallet balance is insufficient for settlement");
+        }
+
         const nextRow = await tx.request.update({
           where: { id },
           data: { status: "COMPLETED" },
         });
 
-        if (Number.isFinite(finalAmount) && finalAmount > 0) {
-          const existingCredit = await tx.walletLedger.findFirst({
-            where: { userId: req.user.id, refType: "service_earning", refId: nextRow.id },
+        const existingDebit = await tx.walletLedger.findFirst({
+          where: { userId: row.consumerId, refType: "service_payment", refId: nextRow.id },
+        });
+        if (!existingDebit) {
+          await tx.walletLedger.create({
+            data: {
+              userId: row.consumerId,
+              amount: -finalAmount,
+              currency: "NGN",
+              reason: `Service payment (${nextRow.category})`,
+              refType: "service_payment",
+              refId: nextRow.id,
+            },
           });
+          await tx.transaction.create({
+            data: {
+              id: newId("tx"),
+              userId: row.consumerId,
+              amount: finalAmount,
+              currency: "NGN",
+              status: "PAID",
+              provider: "wallet_service",
+              providerRef: nextRow.id,
+            },
+          });
+        }
 
-          if (!existingCredit) {
-            const vendorAmount = Math.round(finalAmount * (1 - env.SERVICE_COMMISSION_RATE));
-            await tx.walletLedger.create({
-              data: {
-                userId: req.user.id,
-                amount: vendorAmount,
-                currency: "NGN",
-                reason: `Service earning (${nextRow.category})`,
-                refType: "service_earning",
-                refId: nextRow.id,
-              },
-            });
-          }
+        const existingCredit = await tx.walletLedger.findFirst({
+          where: { userId: req.user.id, refType: "service_earning", refId: nextRow.id },
+        });
+        if (!existingCredit) {
+          const vendorAmount = Math.round(finalAmount * (1 - env.SERVICE_COMMISSION_RATE));
+          await tx.walletLedger.create({
+            data: {
+              userId: req.user.id,
+              amount: vendorAmount,
+              currency: "NGN",
+              reason: `Service earning (${nextRow.category})`,
+              refType: "service_earning",
+              refId: nextRow.id,
+            },
+          });
+          await tx.transaction.create({
+            data: {
+              id: newId("tx"),
+              userId: req.user.id,
+              amount: vendorAmount,
+              currency: "NGN",
+              status: "PAID",
+              provider: "service_payout",
+              providerRef: nextRow.id,
+            },
+          });
         }
 
         return nextRow;
