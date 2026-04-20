@@ -9,6 +9,8 @@ import { dispatchOneByOne } from "./requests.service.js";
 import { env } from "../../env.js";
 import { notifyAdmins, notifyUser, notifyVendor } from "../../realtime/ws.js";
 
+const OFFER_GRACE_MS = 15 * 60 * 1000;
+
 export function requestsRoutes() {
   const r = Router();
 
@@ -156,7 +158,7 @@ export function requestsRoutes() {
       });
 
       // If the latest is pending but expired, expire it and dispatch next vendor
-      if (latest && latest.status === "PENDING" && latest.expiresAt <= new Date()) {
+      if (latest && latest.status === "PENDING" && latest.expiresAt.getTime() + OFFER_GRACE_MS <= Date.now()) {
         await prisma.dispatchOffer.update({
           where: { id: latest.id },
           data: { status: "EXPIRED" },
@@ -171,7 +173,7 @@ export function requestsRoutes() {
         where: {
           vendorId: vendor.id,
           status: "PENDING",
-          expiresAt: { gt: new Date() },
+          expiresAt: { gt: new Date(Date.now() - OFFER_GRACE_MS) },
         },
         orderBy: { createdAt: "desc" },
         include: { request: true },
@@ -198,7 +200,7 @@ export function requestsRoutes() {
       if (!offer) throw new HttpError(404, "Offer not found");
       if (offer.vendorId !== vendor.id) throw new HttpError(403, "Not your offer");
       if (offer.status !== "PENDING") throw new HttpError(400, "Offer not pending");
-      if (offer.expiresAt <= new Date()) {
+      if (offer.expiresAt.getTime() + OFFER_GRACE_MS <= Date.now()) {
         await prisma.dispatchOffer.update({ where: { id: offerId }, data: { status: "EXPIRED" } });
         // Continue dispatch to next vendor
         await dispatchOneByOne(offer.requestId);
