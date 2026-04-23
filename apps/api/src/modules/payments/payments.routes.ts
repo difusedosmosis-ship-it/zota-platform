@@ -46,8 +46,10 @@ export function paymentsRoutes() {
       const amount = Number(req.body?.amount);
       if (!Number.isFinite(amount) || amount < 100) throw new HttpError(400, "amount must be at least 100");
 
-      const email = req.body?.email || req.user.email;
-      if (!email) throw new HttpError(400, "email is required for hosted checkout");
+      const email =
+        (typeof req.body?.email === "string" && req.body.email.trim()) ||
+        req.user.email ||
+        `${req.user.id}@users.zota.app`;
 
       const reference = generatePaymentReference("topup");
       const callbackUrl = typeof req.body?.callbackUrl === "string" ? req.body.callbackUrl : undefined;

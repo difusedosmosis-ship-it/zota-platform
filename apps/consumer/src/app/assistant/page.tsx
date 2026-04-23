@@ -67,6 +67,7 @@ export default function ConsumerAssistantPage() {
   const [prompt, setPrompt] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [canUseVoiceInput, setCanUseVoiceInput] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [nearby, setNearby] = useState<NearbyVendor[]>([]);
   const [reviewMap, setReviewMap] = useState<Record<string, { averageRating: number; totalReviews: number }>>({});
@@ -294,8 +295,7 @@ export default function ConsumerAssistantPage() {
     };
     const Recognition = browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition;
     if (!Recognition) {
-      setTone("error");
-      setStatus("Voice input is not supported on this device.");
+      setStatus("");
       return;
     }
 
@@ -310,12 +310,20 @@ export default function ConsumerAssistantPage() {
       if (transcript) setPrompt(transcript);
     };
     recognition.onerror = () => {
-      setTone("error");
-      setStatus("Could not capture voice input.");
+      setTone("info");
+      setStatus("Voice input is unavailable right now. Type your request instead.");
     };
     recognition.onend = () => setIsListening(false);
     recognition.start();
   }
+
+  useEffect(() => {
+    const browserWindow = window as Window & {
+      SpeechRecognition?: new () => BrowserSpeechRecognition;
+      webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+    };
+    setCanUseVoiceInput(Boolean(browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -382,17 +390,19 @@ export default function ConsumerAssistantPage() {
               placeholder="Tell Zota what you need. Example: find a verified mechanic near me, book a premium hotel in Lagos, or show me event halls for 200 guests."
             />
             <div className="flex items-center gap-2 self-end pb-1">
-              <button
-                aria-label="Voice input"
-                onClick={startVoiceInput}
-                className={`grid h-10 w-10 place-items-center rounded-full border ${isListening ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600"}`}
-              >
-                <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z" />
-                  <path d="M19 11a7 7 0 0 1-14 0" />
-                  <path d="M12 18v3" />
-                </svg>
-              </button>
+              {canUseVoiceInput ? (
+                <button
+                  aria-label="Voice input"
+                  onClick={startVoiceInput}
+                  className={`grid h-10 w-10 place-items-center rounded-full border ${isListening ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600"}`}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z" />
+                    <path d="M19 11a7 7 0 0 1-14 0" />
+                    <path d="M12 18v3" />
+                  </svg>
+                </button>
+              ) : null}
               <button
                 aria-label="Run assistant"
                 onClick={() => void runAssistant()}

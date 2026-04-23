@@ -7,8 +7,7 @@ import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
 import { pushNotification } from "@/lib/notifications";
-import { readSession, type SessionUser } from "@/lib/session";
-import { requireRole } from "@/lib/route-guard";
+import { readSession, restoreSessionFromServer, type SessionUser } from "@/lib/session";
 
 type VendorReviewResponse = {
   ok: boolean;
@@ -57,9 +56,8 @@ export default function ConsumerVendorDetailPage() {
   }, [serviceId, serviceTitle, vendorId]);
 
   async function bootstrap() {
-    const session = await requireRole(router, "CONSUMER");
-    if (!session) return;
-    setUser(session.user);
+    const session = readSession() ?? (await restoreSessionFromServer());
+    if (session?.user.role === "CONSUMER") setUser(session.user);
 
     const reviewRes = await apiGet<VendorReviewResponse>(`/reviews/vendor/${vendorId}?limit=5`);
     if (reviewRes.ok && reviewRes.data) {
@@ -119,6 +117,10 @@ export default function ConsumerVendorDetailPage() {
   }
 
   async function createRequest() {
+    if (!user) {
+      router.push(`/login?next=${encodeURIComponent(`/vendors/${vendorId}`)}`);
+      return;
+    }
     const position = await ensureLocation();
     if (!position) return;
 
@@ -222,7 +224,7 @@ export default function ConsumerVendorDetailPage() {
                 {busyAction === "request" ? "Sending request..." : busyAction === "location" ? "Getting location..." : "Request service"}
               </button>
               <Link
-                href={messageHref}
+                href={user ? messageHref : `/login?next=${encodeURIComponent(messageHref)}`}
                 className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700"
               >
                 Message business

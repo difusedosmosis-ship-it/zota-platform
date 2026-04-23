@@ -117,7 +117,10 @@ export default function WalletPage() {
   async function startTopup() {
     setTone("info");
     setStatus("Initializing top-up...");
-    const callbackUrl = typeof window !== "undefined" ? `${window.location.origin}/wallet` : undefined;
+    const callbackUrl =
+      typeof window !== "undefined" && /^https?:/i.test(window.location.origin)
+        ? `${window.location.origin}/wallet`
+        : undefined;
     const res = await apiPost<PaymentInitResponse>("/payments/topup/init", {
       amount: topupAmount,
       callbackUrl,

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
-import { requireRole } from "@/lib/route-guard";
+import { readSession, restoreSessionFromServer, type SessionUser } from "@/lib/session";
 
 type BookingOrder = {
   id: string;
@@ -44,6 +44,7 @@ type ListingsResponse = {
 export default function BookingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [user, setUser] = useState<SessionUser | null>(() => readSession()?.user ?? null);
   const [status, setStatus] = useState("Loading bookings...");
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
   const [orders, setOrders] = useState<BookingOrder[]>([]);
@@ -51,28 +52,36 @@ export default function BookingsPage() {
 
   const loadBookings = useCallback(async () => {
     setTone("info");
-    const [ordersRes, listingsRes] = await Promise.all([
-      apiGet<OrdersResponse>("/booking/orders/me"),
-      apiGet<ListingsResponse>("/booking/public/listings?city=Lagos&limit=8"),
-    ]);
-
-    if (!ordersRes.ok || !ordersRes.data) {
+    const listingsRes = await apiGet<ListingsResponse>("/booking/public/listings?city=Lagos&limit=8");
+    if (!listingsRes.ok || !listingsRes.data) {
       setTone("error");
-      return setStatus(`Failed: ${ordersRes.error}`);
+      return setStatus(`Failed: ${listingsRes.error}`);
     }
 
-    setOrders(ordersRes.data.orders);
-    if (listingsRes.ok && listingsRes.data) setDiscover(listingsRes.data.listings);
+    setDiscover(listingsRes.data.listings);
+
+    if (user?.role === "CONSUMER") {
+      const ordersRes = await apiGet<OrdersResponse>("/booking/orders/me");
+      if (ordersRes.ok && ordersRes.data) {
+        setOrders(ordersRes.data.orders);
+      } else {
+        setOrders([]);
+      }
+    } else {
+      setOrders([]);
+    }
+
     setTone("success");
     setStatus("Bookings loaded.");
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
-        const session = await requireRole(router, "CONSUMER");
-        if (!session || cancelled) return;
+        const session = readSession() ?? (await restoreSessionFromServer());
+        if (cancelled) return;
+        if (session?.user.role === "CONSUMER") setUser(session.user);
         await loadBookings();
       })();
     }, 0);
@@ -84,7 +93,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     const reference = searchParams.get("reference");
-    if (!reference) return;
+    if (!reference || user?.role !== "CONSUMER") return;
 
     const timer = window.setTimeout(async () => {
       setTone("info");
@@ -121,7 +130,9 @@ export default function BookingsPage() {
           <h2 className="text-lg font-semibold text-gray-900">My Orders</h2>
           <div className="mt-4 space-y-3">
             {orders.length === 0 ? (
-              <p className="text-sm text-gray-600">No booking orders yet. Booking quotes and confirmations will appear here.</p>
+              <p className="text-sm text-gray-600">
+                {user ? "No booking orders yet. Booking quotes and confirmations will appear here." : "Sign in to manage orders. You can still browse available bookings below."}
+              </p>
             ) : (
               orders.map((order) => (
                 <article key={order.id} className="rounded-xl bg-slate-50 p-4">

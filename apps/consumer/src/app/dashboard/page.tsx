@@ -6,8 +6,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet } from "@/lib/api";
-import { readSession, type SessionUser } from "@/lib/session";
-import { requireRole } from "@/lib/route-guard";
+import { readSession, restoreSessionFromServer, type SessionUser } from "@/lib/session";
 
 type Category = { id: string; name: string; kind: string };
 type CategoriesResponse = { ok: boolean; categories: Category[] };
@@ -166,9 +165,9 @@ export default function ConsumerDashboardPage() {
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {
-        const session = await requireRole(router, "CONSUMER");
-        if (!session || cancelled) return;
-        setUser(session.user);
+        const session = readSession() ?? (await restoreSessionFromServer());
+        if (cancelled) return;
+        if (session?.user.role === "CONSUMER") setUser(session.user);
         await bootstrap();
       })();
     }, 0);
@@ -179,6 +178,12 @@ export default function ConsumerDashboardPage() {
   }, [router]);
 
   function openAssistant(prompt?: string) {
+    if (!user) {
+      const params = new URLSearchParams();
+      params.set("next", prompt ? `/assistant?q=${encodeURIComponent(prompt)}` : "/assistant");
+      router.push(`/login?${params.toString()}`);
+      return;
+    }
     const params = new URLSearchParams();
     if (prompt) params.set("q", prompt);
     router.push(`/assistant${params.toString() ? `?${params.toString()}` : ""}`);
