@@ -13,6 +13,7 @@ const AREA_BY_PATH: Record<string, string> = {
   "/messages": "MESSAGES",
   "/notifications": "NOTIFICATIONS",
 };
+const DEFAULT_ADMIN_ROUTE = "/dashboard";
 
 function decodePayload(raw?: string) {
   if (!raw) return null;
@@ -25,13 +26,29 @@ function decodePayload(raw?: string) {
   }
 }
 
+function firstAllowedRoute(user?: { officePermissions?: string[]; isSuperAdmin?: boolean }) {
+  if (!user) return "/login";
+  if (user.isSuperAdmin) return DEFAULT_ADMIN_ROUTE;
+
+  const permissions = user.officePermissions ?? [];
+  if (permissions.length === 0) return DEFAULT_ADMIN_ROUTE;
+
+  const routes = Object.entries(AREA_BY_PATH);
+  for (const [route, area] of routes) {
+    if (permissions.includes(area)) return route;
+  }
+
+  return DEFAULT_ADMIN_ROUTE;
+}
+
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const raw = req.cookies.get(COOKIE_NAME)?.value;
   const session = decodePayload(raw);
+  const homeRoute = firstAllowedRoute(session?.user);
 
   if (pathname === "/login" && session?.user?.role === ROLE) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    return NextResponse.redirect(new URL(homeRoute, req.url));
   }
 
   if (PROTECTED.some((p) => pathname.startsWith(p))) {
@@ -43,8 +60,10 @@ export function proxy(req: NextRequest) {
 
     const matched = Object.entries(AREA_BY_PATH).find(([key]) => pathname.startsWith(key));
     const requiredArea = matched?.[1];
-    if (requiredArea && !session.user.isSuperAdmin && !(session.user.officePermissions ?? []).includes(requiredArea)) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+    const permissions = session.user.officePermissions ?? [];
+    const hasExplicitPermissions = permissions.length > 0;
+    if (requiredArea && hasExplicitPermissions && !session.user.isSuperAdmin && !permissions.includes(requiredArea)) {
+      return NextResponse.redirect(new URL(homeRoute, req.url));
     }
   }
 
