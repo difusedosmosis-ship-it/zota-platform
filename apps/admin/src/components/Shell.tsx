@@ -52,10 +52,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     () => formatIdentity(session?.user.email, session?.user.phone),
     [session?.user.email, session?.user.phone],
   );
+  const allOfficeAreas = useMemo(
+    () => ["OVERVIEW", "KYC", "CATALOG", "FINANCE", "TEAM", "MESSAGES", "NOTIFICATIONS"],
+    [],
+  );
   const officeTitle = session?.user.officeTitle ?? (session?.user.isSuperAdmin ? "Super Admin" : "Office operator");
-  const officePermissions = session?.user.isSuperAdmin
-    ? ["OVERVIEW", "KYC", "CATALOG", "FINANCE", "TEAM", "MESSAGES", "NOTIFICATIONS"]
-    : (session?.user.officePermissions ?? []);
+  const assignedPermissions = session?.user.officePermissions ?? [];
+  const officePermissions = session?.user.isSuperAdmin || assignedPermissions.length === 0
+    ? allOfficeAreas
+    : assignedPermissions;
 
   useEffect(() => {
     if (!session?.user?.id || session.user.role !== "ADMIN") return;
@@ -86,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   function canAccess(area: string) {
-    return session?.user.isSuperAdmin || officePermissions.includes(area);
+    return officePermissions.includes(area);
   }
 
   if (session?.user?.isDisabled) {
