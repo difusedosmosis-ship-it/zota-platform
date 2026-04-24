@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { env } from "../../env.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { prisma } from "../../prisma.js";
 import { HttpError } from "../../utils/http.js";
@@ -52,13 +53,17 @@ export function paymentsRoutes() {
         `${req.user.id}@users.zota.app`;
 
       const reference = generatePaymentReference("topup");
-      const callbackUrl = typeof req.body?.callbackUrl === "string" ? req.body.callbackUrl : undefined;
+      const requestedCallback = typeof req.body?.callbackUrl === "string" ? req.body.callbackUrl.trim() : "";
+      const callbackUrl = requestedCallback && /^https?:\/\//i.test(requestedCallback)
+        ? requestedCallback
+        : env.PAYSTACK_CALLBACK_URL || undefined;
 
       const payment = await initializePaystackTransaction({
         email,
         amount,
         reference,
         callbackUrl,
+        channels: ["card"],
         metadata: { type: "topup", userId: req.user.id },
       });
 

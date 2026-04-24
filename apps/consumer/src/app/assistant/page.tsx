@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StatusToast } from "@/components/StatusToast";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, apiPostBlob } from "@/lib/api";
 import { pushNotification } from "@/lib/notifications";
 import { readSession, type SessionUser } from "@/lib/session";
 import { requireRole } from "@/lib/route-guard";
@@ -68,6 +68,10 @@ export default function ConsumerAssistantPage() {
   const [isListening, setIsListening] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [canUseVoiceInput, setCanUseVoiceInput] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<"browser" | "recorder" | "none">("none");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const mediaChunksRef = useRef<Blob[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [nearby, setNearby] = useState<NearbyVendor[]>([]);
   const [reviewMap, setReviewMap] = useState<Record<string, { averageRating: number; totalReviews: number }>>({});
@@ -288,41 +292,136 @@ export default function ConsumerAssistantPage() {
     });
   }
 
-  function startVoiceInput() {
+  async function startVoiceInput() {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+      setStatus("Finishing voice note...");
+      return;
+    }
     const browserWindow = window as Window & {
       SpeechRecognition?: new () => BrowserSpeechRecognition;
       webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
     };
     const Recognition = browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition;
-    if (!Recognition) {
-      setStatus("");
+    if (Recognition) {
+      const recognition = new Recognition();
+      recognition.lang = "en-US";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      setIsListening(true);
+      setTone("info");
+      setStatus("Listening...");
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0]?.[0]?.transcript;
+        if (transcript) {
+          setPrompt(transcript);
+          setTone("success");
+          setStatus("Voice captured.");
+        }
+      };
+      recognition.onerror = () => {
+        setTone("error");
+        setStatus("Voice input is unavailable right now. Type your request instead.");
+      };
+      recognition.onend = () => setIsListening(false);
+      recognition.start();
       return;
     }
 
-    const recognition = new Recognition();
-    recognition.lang = "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    setIsListening(true);
+    if (!("MediaRecorder" in window) || !navigator.mediaDevices?.getUserMedia) {
+      setTone("error");
+      setStatus("Voice input is not supported on this device.");
+      return;
+    }
 
-    recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript;
-      if (transcript) setPrompt(transcript);
-    };
-    recognition.onerror = () => {
+    try {
       setTone("info");
-      setStatus("Voice input is unavailable right now. Type your request instead.");
-    };
-    recognition.onend = () => setIsListening(false);
-    recognition.start();
+      setStatus("Recording voice note...");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const preferredMime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
+      const recorder = preferredMime ? new MediaRecorder(stream, { mimeType: preferredMime }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      mediaChunksRef.current = [];
+      setIsListening(true);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) mediaChunksRef.current.push(event.data);
+      };
+
+      recorder.onerror = () => {
+        setTone("error");
+        setStatus("Voice capture failed. Type your request instead.");
+        setIsListening(false);
+      };
+
+      recorder.onstop = async () => {
+        const mimeType = recorder.mimeType || preferredMime || "audio/webm";
+        const blob = new Blob(mediaChunksRef.current, { type: mimeType });
+        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+        setIsListening(false);
+
+        if (!blob.size) {
+          setTone("error");
+          setStatus("No voice input was captured.");
+          return;
+        }
+
+        setTone("info");
+        setStatus("Transcribing voice note...");
+        const res = await apiPostBlob<{ ok: boolean; text: string }>("/ai/transcribe", blob, {
+          headers: { "x-audio-mime-type": mimeType },
+        });
+
+        if (!res.ok || !res.data?.text) {
+          setTone("error");
+          setStatus(`Failed: ${res.error}`);
+          return;
+        }
+
+        setPrompt(res.data.text);
+        setTone("success");
+        setStatus("Voice captured.");
+      };
+
+      recorder.start();
+      window.setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      }, 7000);
+    } catch {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      mediaRecorderRef.current = null;
+      setIsListening(false);
+      setTone("error");
+      setStatus("Microphone access was denied. Type your request instead.");
+    }
   }
 
   useEffect(() => {
     const browserWindow = window as Window & {
       SpeechRecognition?: new () => BrowserSpeechRecognition;
       webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+      MediaRecorder?: typeof MediaRecorder;
     };
-    setCanUseVoiceInput(Boolean(browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition));
+    const supportsBrowser = Boolean(browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition);
+    const supportsRecorder = Boolean(browserWindow.MediaRecorder && navigator.mediaDevices?.getUserMedia);
+    setVoiceMode(supportsBrowser ? "browser" : supportsRecorder ? "recorder" : "none");
+    setCanUseVoiceInput(supportsBrowser || supportsRecorder);
+  }, []);
+
+  useEffect(() => () => {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -393,7 +492,7 @@ export default function ConsumerAssistantPage() {
               {canUseVoiceInput ? (
                 <button
                   aria-label="Voice input"
-                  onClick={startVoiceInput}
+                  onClick={() => void startVoiceInput()}
                   className={`grid h-10 w-10 place-items-center rounded-full border ${isListening ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600"}`}
                 >
                   <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth="1.8">
@@ -402,7 +501,9 @@ export default function ConsumerAssistantPage() {
                     <path d="M12 18v3" />
                   </svg>
                 </button>
-              ) : null}
+              ) : (
+                <span className="hidden text-xs font-medium text-slate-400 sm:block">Voice unavailable</span>
+              )}
               <button
                 aria-label="Run assistant"
                 onClick={() => void runAssistant()}
@@ -439,6 +540,16 @@ export default function ConsumerAssistantPage() {
         </div>
 
         <section className="mt-6 space-y-3">
+          {!canUseVoiceInput ? (
+            <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              Voice dictation is not supported on this device yet. Type your request and continue.
+            </div>
+          ) : voiceMode === "recorder" ? (
+            <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              Voice input uses a short recorded note and secure transcription on this device.
+            </div>
+          ) : null}
+
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] rounded-[24px] px-4 py-3 ${message.role === "user" ? "bg-emerald-950 text-white" : "border border-slate-200 bg-slate-50 text-slate-900"}`}>

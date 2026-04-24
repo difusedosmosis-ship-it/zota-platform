@@ -9,6 +9,7 @@ type PaystackInitArgs = {
   reference: string;
   callbackUrl?: string;
   metadata?: Record<string, unknown>;
+  channels?: string[];
 };
 
 type PaystackVerifyData = {
@@ -43,6 +44,7 @@ export async function initializePaystackTransaction(args: PaystackInitArgs) {
       callback_url: args.callbackUrl,
       metadata: args.metadata,
       currency: "NGN",
+      channels: args.channels,
     }),
   });
 

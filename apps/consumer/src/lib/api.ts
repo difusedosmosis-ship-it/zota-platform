@@ -10,7 +10,7 @@ export type ApiResult<T> = {
   requestId?: string | null;
 };
 
-function mapPath(path: string) {
+export function mapApiPath(path: string) {
   if (path.startsWith("/api/")) return path;
   return `/api/backend${path.startsWith("/") ? path : `/${path}`}`;
 }
@@ -33,7 +33,7 @@ async function parseResponse<T>(res: Response): Promise<ApiResult<T>> {
 }
 
 async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<ApiResult<T>> {
-  const url = mapPath(path);
+  const url = mapApiPath(path);
   const timeoutMs = 12000;
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -80,4 +80,16 @@ export function apiPatch<T>(path: string, body: unknown) {
 
 export function apiDelete<T>(path: string) {
   return apiRequest<T>(path, { method: "DELETE" });
+}
+
+
+export async function apiPostBlob<T>(path: string, blob: Blob, options?: { headers?: Record<string, string> }) {
+  const res = await fetch(mapApiPath(path), {
+    method: "POST",
+    body: blob,
+    headers: {
+      ...(options?.headers ?? {}),
+    },
+  });
+  return parseResponse<T>(res);
 }

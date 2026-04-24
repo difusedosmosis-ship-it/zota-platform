@@ -47,6 +47,11 @@ type PaymentInitResponse = {
   };
 };
 
+type VerifyResponse = {
+  ok: boolean;
+  result: { type: string };
+};
+
 export default function WalletPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -99,7 +104,7 @@ export default function WalletPage() {
     const timer = window.setTimeout(async () => {
       setTone("info");
       setStatus("Verifying payment...");
-      const res = await apiPost<{ ok: boolean; result: { type: string } }>("/payments/verify", { reference });
+      const res = await apiPost<VerifyResponse>("/payments/verify", { reference });
       if (!res.ok) {
         setTone("error");
         setStatus(`Failed: ${res.error}`);
@@ -115,8 +120,14 @@ export default function WalletPage() {
   }, [searchParams, loadWallet, router]);
 
   async function startTopup() {
+    if (!Number.isFinite(topupAmount) || topupAmount < 100) {
+      setTone("error");
+      setStatus("Enter a valid amount from NGN 100 upward.");
+      return;
+    }
+
     setTone("info");
-    setStatus("Initializing top-up...");
+    setStatus("Opening Paystack secure checkout...");
     const callbackUrl =
       typeof window !== "undefined" && /^https?:/i.test(window.location.origin)
         ? `${window.location.origin}/wallet`
@@ -131,7 +142,7 @@ export default function WalletPage() {
     }
 
     setTone("success");
-    setStatus("Redirecting to payment...");
+    setStatus("Redirecting to Paystack...");
     window.location.assign(res.data.payment.authorization_url);
   }
 
@@ -153,7 +164,7 @@ export default function WalletPage() {
           <p className={`mt-2 text-4xl font-bold ${balance >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
             NGN {balance.toLocaleString()}
           </p>
-          <p className="mt-2 text-sm text-gray-500">Current wallet layer is ledger-first. Automated card capture and split payout are still pending.</p>
+          <p className="mt-2 text-sm text-gray-500">Top up your Zota wallet with Paystack card checkout. Completed payments appear here automatically after verification.</p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               className="w-full rounded-xl border border-gray-300 px-4 py-3 sm:max-w-xs"
@@ -164,7 +175,7 @@ export default function WalletPage() {
               onChange={(e) => setTopupAmount(Number(e.target.value))}
             />
             <button className="rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700" onClick={startTopup}>
-              Top Up With Card
+              Top Up With Paystack
             </button>
           </div>
         </div>

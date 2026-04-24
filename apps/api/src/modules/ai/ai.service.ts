@@ -110,3 +110,32 @@ export async function analyzeIntake(input: AiIntakeInput): Promise<AiIntakeResul
     return safeFallback(input.text);
   }
 }
+
+
+export async function transcribeAudio(buffer: Buffer, mimeType: string) {
+  const apiKey = env.OPENAI_API_KEY;
+  if (!apiKey) throw new HttpError(500, "Missing OPENAI_API_KEY");
+
+  const extension = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+  const file = new File([new Uint8Array(buffer)], `voice-note.${extension}`, { type: mimeType || "audio/webm" });
+  const form = new FormData();
+  form.append("file", file);
+  form.append("model", "gpt-4o-mini-transcribe");
+
+  const resp = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: form,
+  });
+
+  if (!resp.ok) {
+    const t = await resp.text().catch(() => "");
+    throw new HttpError(502, `AI transcription error: ${resp.status} ${t}`);
+  }
+
+  const json = (await resp.json()) as { text?: string };
+  if (!json.text?.trim()) throw new HttpError(502, "AI transcription returned empty text");
+  return json.text.trim();
+}
