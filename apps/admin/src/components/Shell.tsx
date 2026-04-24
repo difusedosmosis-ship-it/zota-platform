@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { apiPost } from "@/lib/api";
 import { clearSession, readSession } from "@/lib/session";
 import { ZotaLogo } from "@/components/ZotaLogo";
 
@@ -51,12 +52,49 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     () => formatIdentity(session?.user.email, session?.user.phone),
     [session?.user.email, session?.user.phone],
   );
+  const officeTitle = session?.user.officeTitle ?? (session?.user.isSuperAdmin ? "Super Admin" : "Office operator");
+  const officePermissions = session?.user.isSuperAdmin
+    ? ["OVERVIEW", "KYC", "CATALOG", "FINANCE", "TEAM", "MESSAGES", "NOTIFICATIONS"]
+    : (session?.user.officePermissions ?? []);
+
+  useEffect(() => {
+    if (!session?.user?.id || session.user.role !== "ADMIN") return;
+    void apiPost("/admin/users/me/activity", {
+      route: pathname,
+      action: "office_navigation",
+      details: { pathname },
+    });
+
+    const interval = window.setInterval(() => {
+      void apiPost("/admin/users/me/activity", {
+        route: pathname,
+        action: "office_heartbeat",
+        details: { pathname },
+      });
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, [pathname, session?.user?.id, session?.user?.role]);
 
   function logout() {
+    void apiPost("/admin/users/me/logout", { route: pathname }).finally(() => {
+      clearSession();
+      fetch("/api/session/logout", { method: "POST" }).finally(() => {
+        window.location.href = "/login";
+      });
+    });
+  }
+
+  function canAccess(area: string) {
+    return session?.user.isSuperAdmin || officePermissions.includes(area);
+  }
+
+  if (session?.user?.isDisabled) {
     clearSession();
     fetch("/api/session/logout", { method: "POST" }).finally(() => {
       window.location.href = "/login";
     });
+    return null;
   }
 
   if (!hasSession) {
@@ -81,7 +119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="bm-page bm-shell">
       <aside className="bm-sidebar">
-        <div>
+        <div className="min-h-0">
           <ZotaLogo size={44} />
           <p className="mt-4 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Operations</p>
           <h1 className="mt-2 text-[2rem] font-semibold tracking-[-0.04em] text-slate-950">Office Console</h1>
@@ -91,20 +129,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="mt-8 flex flex-col gap-2">
-          <NavLink href="/dashboard" label="Overview" />
-          <NavLink href="/kyc" label="Verification Queue" />
-          <NavLink href="/catalog" label="Catalog Review" />
-          <NavLink href="/finance" label="Finance Desk" />
-          <NavLink href="/team" label="Office Users" />
-          <NavLink href="/messages" label="Communications" />
-          <NavLink href="/notifications" label="Notifications" />
+          {canAccess("OVERVIEW") ? <NavLink href="/dashboard" label="Overview" /> : null}
+          {canAccess("KYC") ? <NavLink href="/kyc" label="Verification Queue" /> : null}
+          {canAccess("CATALOG") ? <NavLink href="/catalog" label="Catalog Review" /> : null}
+          {canAccess("FINANCE") ? <NavLink href="/finance" label="Finance Desk" /> : null}
+          {canAccess("TEAM") ? <NavLink href="/team" label="Office Users" /> : null}
+          {canAccess("MESSAGES") ? <NavLink href="/messages" label="Communications" /> : null}
+          {canAccess("NOTIFICATIONS") ? <NavLink href="/notifications" label="Notifications" /> : null}
         </div>
 
         <div className="mt-auto rounded-[24px] border border-slate-200 bg-white/80 p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Signed in</p>
           <p className="mt-2 text-base font-semibold text-slate-950">{identity}</p>
           <p className="mt-1 text-sm text-slate-500">{session?.user.email ?? session?.user.phone ?? "Office operator"}</p>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Office operator</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">{officeTitle}</p>
           <button className="mt-4 bm-btn w-full" onClick={logout}>Logout</button>
         </div>
       </aside>
@@ -116,8 +154,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <p className="text-lg font-semibold tracking-[-0.03em] text-slate-950">{sectionTitle}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/messages" aria-label="Messages" className="bm-btn !px-3"><EnvelopeIcon /></Link>
-            <Link href="/notifications" aria-label="Notifications" className="bm-btn !px-3"><BellIcon /></Link>
+            {canAccess("MESSAGES") ? <Link href="/messages" aria-label="Messages" className="bm-btn !px-3"><EnvelopeIcon /></Link> : null}
+            {canAccess("NOTIFICATIONS") ? <Link href="/notifications" aria-label="Notifications" className="bm-btn !px-3"><BellIcon /></Link> : null}
           </div>
         </header>
 
@@ -128,8 +166,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">{sectionTitle}</h2>
             </div>
             <div className="flex items-center gap-2">
-              <Link href="/messages" aria-label="Messages" className="bm-btn !px-3"><EnvelopeIcon /></Link>
-              <Link href="/notifications" aria-label="Notifications" className="bm-btn !px-3"><BellIcon /></Link>
+              {canAccess("MESSAGES") ? <Link href="/messages" aria-label="Messages" className="bm-btn !px-3"><EnvelopeIcon /></Link> : null}
+              {canAccess("NOTIFICATIONS") ? <Link href="/notifications" aria-label="Notifications" className="bm-btn !px-3"><BellIcon /></Link> : null}
             </div>
           </div>
           {children}

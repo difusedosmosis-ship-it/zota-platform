@@ -7,6 +7,9 @@ import { HttpError } from "../../utils/http.js";
 import { hashPassword } from "../auth/auth.service.js";
 import { newId } from "../../utils/ids.js";
 
+const OFFICE_AREAS = ["OVERVIEW", "KYC", "CATALOG", "FINANCE", "TEAM", "MESSAGES", "NOTIFICATIONS"] as const;
+type OfficeArea = (typeof OFFICE_AREAS)[number];
+
 function isMissingTableError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021";
 }
@@ -22,9 +25,109 @@ async function safeQuery<T>(query: Promise<T>, fallback: T) {
   }
 }
 
+function normalizeOfficePermissions(input: unknown): OfficeArea[] {
+  if (!Array.isArray(input)) return [];
+  return Array.from(new Set(input.filter((value): value is OfficeArea => typeof value === "string" && OFFICE_AREAS.includes(value as OfficeArea))));
+}
+
+async function resolveOfficeActor(userId: string) {
+  const actor = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+      fullName: true,
+      email: true,
+      isSuperAdmin: true,
+      isDisabled: true,
+      officePermissions: true,
+    },
+  });
+  if (!actor || actor.role !== "ADMIN") throw new HttpError(403, "Office access is restricted");
+  if (actor.isDisabled) throw new HttpError(403, "This office account has been disabled");
+  return actor;
+}
+
+async function hasOfficeSuperAdmin() {
+  const count = await prisma.user.count({
+    where: {
+      role: "ADMIN",
+      isDisabled: false,
+      isSuperAdmin: true,
+    },
+  });
+  return count > 0;
+}
+
+async function assertOfficeAccess(userId: string, area: OfficeArea) {
+  const actor = await resolveOfficeActor(userId);
+  const superAdminExists = await hasOfficeSuperAdmin();
+  const hasArea = actor.officePermissions.includes(area);
+  if (actor.isSuperAdmin || !superAdminExists || hasArea) return actor;
+  throw new HttpError(403, `You do not have access to ${area.toLowerCase()} controls`);
+}
+
+async function assertSuperAdmin(userId: string) {
+  const actor = await resolveOfficeActor(userId);
+  const superAdminExists = await hasOfficeSuperAdmin();
+  if (actor.isSuperAdmin || !superAdminExists) return actor;
+  throw new HttpError(403, "Only the super admin can manage office users");
+}
+
+async function logOfficeEvent(args: {
+  actorId?: string | null;
+  targetUserId?: string | null;
+  action: string;
+  route?: string | null;
+  metadata?: Prisma.InputJsonValue;
+}) {
+  await safeQuery(
+    prisma.officeAuditLog.create({
+      data: {
+        id: newId("audit"),
+        actorId: args.actorId ?? null,
+        targetUserId: args.targetUserId ?? null,
+        action: args.action,
+        route: args.route ?? null,
+        metadata: args.metadata,
+      },
+    }),
+    null,
+  );
+}
+
+function requestArea(path: string): OfficeArea | null {
+  if (path.startsWith("/users")) return "TEAM";
+  if (path.startsWith("/kyc")) return "KYC";
+  if (path.startsWith("/catalog")) return "CATALOG";
+  if (path.startsWith("/finance")) return "FINANCE";
+  if (path.startsWith("/communications")) return "MESSAGES";
+  if (path.startsWith("/notifications")) return "NOTIFICATIONS";
+  if (path.startsWith("/overview")) return "OVERVIEW";
+  return null;
+}
+
 export function adminRoutes() {
   const r = Router();
   r.use(authMiddleware, requireRole("ADMIN"));
+  r.use(async (req: any, _res, next) => {
+    try {
+      if (req.path.startsWith("/users/me/activity") || req.path.startsWith("/users/me/logout")) {
+        await resolveOfficeActor(req.user.id);
+        return next();
+      }
+
+      const area = requestArea(req.path);
+      if (area) {
+        req.officeActor = await assertOfficeAccess(req.user.id, area);
+      } else {
+        req.officeActor = await resolveOfficeActor(req.user.id);
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
 
   r.get("/overview", async (_req, res, next) => {
     try {
@@ -36,6 +139,8 @@ export function adminRoutes() {
         requests,
         conversations,
         latestMessages,
+        latestCalls,
+        officeUsers,
         latestSubmissions,
       ] = await Promise.all([
         prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
@@ -49,6 +154,37 @@ export function adminRoutes() {
         prisma.request.findMany({ orderBy: { updatedAt: "desc" }, take: 120 }),
         safeQuery(prisma.conversation.findMany({ orderBy: { lastMessageAt: "desc" }, take: 40 }), []),
         safeQuery(prisma.chatMessage.findMany({ orderBy: { createdAt: "desc" }, take: 40 }), []),
+        safeQuery(
+          prisma.callSession.findMany({
+            include: {
+              initiator: { select: { fullName: true, email: true, phone: true } },
+              recipient: { select: { fullName: true, email: true, phone: true } },
+              conversation: {
+                select: {
+                  request: { select: { id: true, category: true, status: true } },
+                  vendor: { select: { businessName: true } },
+                },
+              },
+            },
+            orderBy: { startedAt: "desc" },
+            take: 12,
+          }),
+          [],
+        ),
+        prisma.user.findMany({
+          where: { role: "ADMIN", isDisabled: false },
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            officeTitle: true,
+            isSuperAdmin: true,
+            lastSeenAt: true,
+            lastRoute: true,
+          },
+          orderBy: [{ isSuperAdmin: "desc" }, { updatedAt: "desc" }],
+          take: 12,
+        }),
         prisma.kycSubmission.findMany({
           orderBy: { createdAt: "desc" },
           take: 5,
@@ -67,6 +203,8 @@ export function adminRoutes() {
       const onlineBusinesses = vendors.filter((row) => row.isOnline).length;
       const activeJobs = requests.filter((row) => row.status === "ACCEPTED" || row.status === "IN_PROGRESS").length;
       const queuedJobs = requests.filter((row) => ["CREATED", "DISPATCHING", "OFFERED"].includes(row.status)).length;
+      const activeRequestRows = requests.filter((row) => row.status === "ACCEPTED" || row.status === "IN_PROGRESS").slice(0, 8);
+      const expiredRequestRows = requests.filter((row) => row.status === "EXPIRED").slice(0, 8);
 
       res.json({
         ok: true,
@@ -95,11 +233,50 @@ export function adminRoutes() {
             activeJobs,
             queuedJobs,
             byStatus: requestStatusCounts,
+            detail: {
+              active: activeRequestRows.map((row) => ({
+                id: row.id,
+                category: row.category,
+                city: row.city,
+                status: row.status,
+                updatedAt: row.updatedAt,
+              })),
+              expired: expiredRequestRows.map((row) => ({
+                id: row.id,
+                category: row.category,
+                city: row.city,
+                status: row.status,
+                updatedAt: row.updatedAt,
+              })),
+            },
           },
           communications: {
             conversations: conversations.length,
             messages: latestMessages.length,
+            calls: latestCalls.length,
           },
+          officeUsers: officeUsers.map((row) => ({
+            id: row.id,
+            name: row.fullName,
+            email: row.email,
+            officeTitle: row.officeTitle,
+            isSuperAdmin: row.isSuperAdmin,
+            isOnline: Boolean(row.lastSeenAt && Date.now() - new Date(row.lastSeenAt).getTime() < 2 * 60 * 1000),
+            lastSeenAt: row.lastSeenAt,
+            lastRoute: row.lastRoute,
+          })),
+          recentCalls: latestCalls.map((row) => ({
+            id: row.id,
+            type: row.type,
+            status: row.status,
+            startedAt: row.startedAt,
+            endedAt: row.endedAt,
+            initiator: row.initiator.fullName ?? row.initiator.email ?? row.initiator.phone ?? "Unknown",
+            recipient: row.recipient.fullName ?? row.recipient.email ?? row.recipient.phone ?? "Unknown",
+            requestId: row.conversation?.request?.id ?? null,
+            requestCategory: row.conversation?.request?.category ?? null,
+            businessName: row.conversation?.vendor?.businessName ?? null,
+          })),
           latestKyc: latestSubmissions.map((row) => ({
             id: row.id,
             status: row.status,
@@ -212,37 +389,99 @@ export function adminRoutes() {
 
   r.get("/users", async (_req, res, next) => {
     try {
-      const rows = await prisma.user.findMany({
+      const [rows, audits] = await Promise.all([
+        prisma.user.findMany({
         where: { role: "ADMIN" },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ isDisabled: "asc" }, { isSuperAdmin: "desc" }, { createdAt: "desc" }],
         select: {
           id: true,
           email: true,
           phone: true,
           fullName: true,
+          officeTitle: true,
+          officePermissions: true,
+          isSuperAdmin: true,
+          isDisabled: true,
+          lastSeenAt: true,
+          lastLoginAt: true,
+          lastLogoutAt: true,
+          lastRoute: true,
           createdAt: true,
         },
+      }),
+        safeQuery(
+          prisma.officeAuditLog.findMany({
+            where: {
+              OR: [
+                { actor: { role: "ADMIN" } },
+                { targetUser: { role: "ADMIN" } },
+              ],
+            },
+            orderBy: { createdAt: "desc" },
+            take: 250,
+          }),
+          [],
+        ),
+      ]);
+
+      const activityByUser = new Map<string, Array<{
+        id: string;
+        action: string;
+        route: string | null;
+        createdAt: Date;
+        metadata: Prisma.JsonValue | null;
+      }>>();
+
+      for (const row of audits) {
+        const keys = [row.actorId, row.targetUserId].filter(Boolean) as string[];
+        for (const key of keys) {
+          const bucket = activityByUser.get(key) ?? [];
+          bucket.push({
+            id: row.id,
+            action: row.action,
+            route: row.route,
+            createdAt: row.createdAt,
+            metadata: row.metadata,
+          });
+          activityByUser.set(key, bucket.slice(0, 12));
+        }
+      }
+
+      res.json({
+        ok: true,
+        users: rows.map((row) => ({
+          ...row,
+          isOnline: Boolean(row.lastSeenAt && Date.now() - new Date(row.lastSeenAt).getTime() < 2 * 60 * 1000),
+          recentActivity: (activityByUser.get(row.id) ?? []).slice(0, 8),
+        })),
       });
-      res.json({ ok: true, users: rows });
     } catch (e) {
       next(e);
     }
   });
 
-  r.post("/users", async (req, res, next) => {
+  r.post("/users", async (req: any, res, next) => {
     try {
+      await assertSuperAdmin(req.user.id);
       const email = String(req.body?.email ?? "").trim().toLowerCase();
       const password = String(req.body?.password ?? "");
       const fullName = String(req.body?.fullName ?? "").trim();
+      const officeTitle = String(req.body?.officeTitle ?? "").trim();
+      const requestedPermissions = normalizeOfficePermissions(req.body?.officePermissions);
+      const isSuperAdmin = Boolean(req.body?.isSuperAdmin);
 
       if (!email || !email.includes("@")) throw new HttpError(400, "Valid email is required");
       if (password.length < 8) throw new HttpError(400, "Password must be at least 8 characters");
       if (!fullName) throw new HttpError(400, "Full name is required");
+      if (!officeTitle) throw new HttpError(400, "Job position is required");
 
       const existing = await prisma.user.findFirst({
         where: { email },
       });
       if (existing) throw new HttpError(409, "This office email already exists");
+
+      const officePermissions = isSuperAdmin ? [...OFFICE_AREAS] : requestedPermissions;
+      if (!officePermissions.length) throw new HttpError(400, "At least one office permission is required");
 
       const user = await prisma.user.create({
         data: {
@@ -251,13 +490,37 @@ export function adminRoutes() {
           email,
           passwordHash: await hashPassword(password),
           fullName,
+          officeTitle,
+          officePermissions,
+          isSuperAdmin,
+          lastLoginAt: null,
         },
         select: {
           id: true,
           email: true,
           phone: true,
           fullName: true,
+          officeTitle: true,
+          officePermissions: true,
+          isSuperAdmin: true,
+          isDisabled: true,
+          lastSeenAt: true,
+          lastLoginAt: true,
+          lastLogoutAt: true,
+          lastRoute: true,
           createdAt: true,
+        },
+      });
+
+      await logOfficeEvent({
+        actorId: req.user.id,
+        targetUserId: user.id,
+        action: "office_user_created",
+        route: "/team",
+        metadata: {
+          officeTitle,
+          officePermissions,
+          isSuperAdmin,
         },
       });
 
@@ -267,11 +530,178 @@ export function adminRoutes() {
     }
   });
 
-  r.post("/catalog/services/:id/publish", async (req, res, next) => {
+  r.patch("/users/:id", async (req: any, res, next) => {
+    try {
+      await assertSuperAdmin(req.user.id);
+      const target = await prisma.user.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, role: true, isSuperAdmin: true, email: true },
+      });
+      if (!target || target.role !== "ADMIN") throw new HttpError(404, "Office user not found");
+
+      const officeTitle = String(req.body?.officeTitle ?? "").trim();
+      const requestedPermissions = normalizeOfficePermissions(req.body?.officePermissions);
+      const isSuperAdmin = Boolean(req.body?.isSuperAdmin);
+      const isDisabled = Boolean(req.body?.isDisabled);
+
+      const superAdminCount = await prisma.user.count({ where: { role: "ADMIN", isSuperAdmin: true, isDisabled: false } });
+      if (target.isSuperAdmin && !isSuperAdmin && superAdminCount <= 1) {
+        throw new HttpError(400, "At least one active super admin must remain");
+      }
+
+      const officePermissions = isSuperAdmin ? [...OFFICE_AREAS] : requestedPermissions;
+      if (!officePermissions.length) throw new HttpError(400, "At least one office permission is required");
+      if (!officeTitle) throw new HttpError(400, "Job position is required");
+
+      const user = await prisma.user.update({
+        where: { id: target.id },
+        data: {
+          officeTitle,
+          officePermissions,
+          isSuperAdmin,
+          isDisabled,
+          passwordHash: isDisabled ? null : undefined,
+        },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          fullName: true,
+          officeTitle: true,
+          officePermissions: true,
+          isSuperAdmin: true,
+          isDisabled: true,
+          lastSeenAt: true,
+          lastLoginAt: true,
+          lastLogoutAt: true,
+          lastRoute: true,
+          createdAt: true,
+        },
+      });
+
+      await logOfficeEvent({
+        actorId: req.user.id,
+        targetUserId: user.id,
+        action: "office_user_updated",
+        route: "/team",
+        metadata: {
+          officeTitle,
+          officePermissions,
+          isSuperAdmin,
+          isDisabled,
+        },
+      });
+
+      res.json({ ok: true, user });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.delete("/users/:id", async (req: any, res, next) => {
+    try {
+      await assertSuperAdmin(req.user.id);
+      if (req.params.id === req.user.id) throw new HttpError(400, "Super admin cannot remove their own account here");
+
+      const target = await prisma.user.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, role: true, isSuperAdmin: true, email: true },
+      });
+      if (!target || target.role !== "ADMIN") throw new HttpError(404, "Office user not found");
+
+      const superAdminCount = await prisma.user.count({ where: { role: "ADMIN", isSuperAdmin: true, isDisabled: false } });
+      if (target.isSuperAdmin && superAdminCount <= 1) {
+        throw new HttpError(400, "At least one active super admin must remain");
+      }
+
+      const disabledUser = await prisma.user.update({
+        where: { id: target.id },
+        data: {
+          isDisabled: true,
+          passwordHash: null,
+          officePermissions: [],
+          lastRoute: null,
+          lastSeenAt: null,
+          lastLogoutAt: new Date(),
+          email: target.email ? `removed+${target.id}@zota.office` : null,
+        },
+        select: { id: true },
+      });
+
+      await logOfficeEvent({
+        actorId: req.user.id,
+        targetUserId: disabledUser.id,
+        action: "office_user_removed",
+        route: "/team",
+        metadata: { targetId: disabledUser.id },
+      });
+
+      res.json({ ok: true });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.post("/users/me/activity", async (req: any, res, next) => {
+    try {
+      const actor = await resolveOfficeActor(req.user.id);
+      const route = typeof req.body?.route === "string" ? req.body.route.slice(0, 180) : null;
+      const action = typeof req.body?.action === "string" ? req.body.action.slice(0, 120) : "office_activity";
+      const details = req.body?.details && typeof req.body.details === "object" ? req.body.details : undefined;
+
+      await prisma.user.update({
+        where: { id: actor.id },
+        data: {
+          lastSeenAt: new Date(),
+          lastRoute: route ?? undefined,
+        },
+      });
+
+      await logOfficeEvent({
+        actorId: actor.id,
+        action,
+        route,
+        metadata: details as Prisma.InputJsonValue | undefined,
+      });
+
+      res.json({ ok: true });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.post("/users/me/logout", async (req: any, res, next) => {
+    try {
+      const actor = await resolveOfficeActor(req.user.id);
+      await prisma.user.update({
+        where: { id: actor.id },
+        data: {
+          lastSeenAt: null,
+          lastLogoutAt: new Date(),
+        },
+      });
+      await logOfficeEvent({
+        actorId: actor.id,
+        action: "office_logout",
+        route: req.body?.route ?? null,
+      });
+      res.json({ ok: true });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  r.post("/catalog/services/:id/publish", async (req: any, res, next) => {
     try {
       const row = await prisma.vendorService.update({
         where: { id: req.params.id },
         data: { isActive: true },
+      });
+      await logOfficeEvent({
+        actorId: req.user.id,
+        action: "catalog_service_published",
+        route: "/catalog",
+        metadata: { serviceId: row.id, title: row.title },
       });
       res.json({ ok: true, service: row });
     } catch (e) {
@@ -279,11 +709,17 @@ export function adminRoutes() {
     }
   });
 
-  r.post("/catalog/services/:id/unpublish", async (req, res, next) => {
+  r.post("/catalog/services/:id/unpublish", async (req: any, res, next) => {
     try {
       const row = await prisma.vendorService.update({
         where: { id: req.params.id },
         data: { isActive: false },
+      });
+      await logOfficeEvent({
+        actorId: req.user.id,
+        action: "catalog_service_unpublished",
+        route: "/catalog",
+        metadata: { serviceId: row.id, title: row.title },
       });
       res.json({ ok: true, service: row });
     } catch (e) {
@@ -299,7 +735,7 @@ export function adminRoutes() {
     res.json({ ok: true, submissions: rows });
   });
 
-  r.post("/kyc/:submissionId/approve", async (req, res, next) => {
+  r.post("/kyc/:submissionId/approve", async (req: any, res, next) => {
     try {
       const id = req.params.submissionId;
       const sub = await prisma.kycSubmission.findUnique({ where: { id } });
@@ -307,12 +743,18 @@ export function adminRoutes() {
 
       await prisma.kycSubmission.update({ where: { id }, data: { status: "APPROVED", reviewerNote: req.body?.note ?? null } });
       await prisma.vendorProfile.update({ where: { id: sub.vendorId }, data: { kycStatus: "APPROVED", kycNote: req.body?.note ?? null } });
+      await logOfficeEvent({
+        actorId: req.user.id,
+        action: "kyc_approved",
+        route: "/kyc",
+        metadata: { submissionId: id, vendorId: sub.vendorId },
+      });
 
       res.json({ ok: true });
     } catch (e) { next(e); }
   });
 
-  r.post("/kyc/:submissionId/reject", async (req, res, next) => {
+  r.post("/kyc/:submissionId/reject", async (req: any, res, next) => {
     try {
       const id = req.params.submissionId;
       const note = String(req.body?.note ?? "Rejected");
@@ -321,6 +763,12 @@ export function adminRoutes() {
 
       await prisma.kycSubmission.update({ where: { id }, data: { status: "REJECTED", reviewerNote: note } });
       await prisma.vendorProfile.update({ where: { id: sub.vendorId }, data: { kycStatus: "REJECTED", kycNote: note } });
+      await logOfficeEvent({
+        actorId: req.user.id,
+        action: "kyc_rejected",
+        route: "/kyc",
+        metadata: { submissionId: id, vendorId: sub.vendorId, note },
+      });
 
       res.json({ ok: true });
     } catch (e) { next(e); }
@@ -371,7 +819,7 @@ export function adminRoutes() {
     }
   });
 
-  r.post("/finance/payouts/manual", async (req, res, next) => {
+  r.post("/finance/payouts/manual", async (req: any, res, next) => {
     try {
       const vendorId = String(req.body?.vendorId ?? "");
       const amount = Number(req.body?.amount);
@@ -417,6 +865,13 @@ export function adminRoutes() {
         });
 
         return { entry, transaction };
+      });
+
+      await logOfficeEvent({
+        actorId: req.user.id,
+        action: "manual_vendor_payout",
+        route: "/finance",
+        metadata: { vendorId, amount, note },
       });
 
       res.json({ ok: true, payout: result });

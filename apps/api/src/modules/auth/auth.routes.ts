@@ -51,7 +51,21 @@ export function authRoutes() {
       }
 
       const token = signToken({ id: user.id, role: user.role });
-      res.json({ ok: true, token, user: { id: user.id, role: user.role, email: user.email, phone: user.phone } });
+      res.json({
+        ok: true,
+        token,
+        user: {
+          id: user.id,
+          role: user.role,
+          email: user.email,
+          phone: user.phone,
+          fullName: user.fullName,
+          officeTitle: user.officeTitle,
+          officePermissions: user.officePermissions,
+          isSuperAdmin: user.isSuperAdmin,
+          isDisabled: user.isDisabled,
+        },
+      });
     } catch (e) { next(e); }
   });
 
@@ -63,12 +77,35 @@ export function authRoutes() {
         where: input.email ? { email: input.email } : { phone: input.phone! }
       });
       if (!user?.passwordHash) throw new HttpError(401, "Invalid credentials");
+      if (user.isDisabled) throw new HttpError(403, "This office account has been disabled");
 
       const ok = await verifyPassword(input.password, user.passwordHash);
       if (!ok) throw new HttpError(401, "Invalid credentials");
 
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          lastLoginAt: user.role === "ADMIN" ? new Date() : user.lastLoginAt,
+          lastSeenAt: user.role === "ADMIN" ? new Date() : user.lastSeenAt,
+        },
+      });
+
       const token = signToken({ id: user.id, role: user.role });
-      res.json({ ok: true, token, user: { id: user.id, role: user.role, email: user.email, phone: user.phone } });
+      res.json({
+        ok: true,
+        token,
+        user: {
+          id: user.id,
+          role: user.role,
+          email: user.email,
+          phone: user.phone,
+          fullName: user.fullName,
+          officeTitle: user.officeTitle,
+          officePermissions: user.officePermissions,
+          isSuperAdmin: user.isSuperAdmin,
+          isDisabled: user.isDisabled,
+        },
+      });
     } catch (e) { next(e); }
   });
 

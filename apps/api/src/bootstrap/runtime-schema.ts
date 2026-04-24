@@ -5,6 +5,56 @@ async function run(statement: string) {
 }
 
 export async function ensureRuntimeSchema() {
+  await run(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "officeTitle" TEXT;`);
+  await run(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "officePermissions" TEXT[] DEFAULT ARRAY[]::TEXT[];`);
+  await run(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isSuperAdmin" BOOLEAN NOT NULL DEFAULT false;`);
+  await run(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isDisabled" BOOLEAN NOT NULL DEFAULT false;`);
+  await run(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastSeenAt" TIMESTAMP(3);`);
+  await run(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastLoginAt" TIMESTAMP(3);`);
+  await run(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastLogoutAt" TIMESTAMP(3);`);
+  await run(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastRoute" TEXT;`);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS "OfficeAuditLog" (
+      "id" TEXT NOT NULL,
+      "actorId" TEXT,
+      "targetUserId" TEXT,
+      "action" TEXT NOT NULL,
+      "route" TEXT,
+      "metadata" JSONB,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "OfficeAuditLog_pkey" PRIMARY KEY ("id")
+    );
+  `);
+
+  await run(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'OfficeAuditLog_actorId_fkey'
+      ) THEN
+        ALTER TABLE "OfficeAuditLog"
+          ADD CONSTRAINT "OfficeAuditLog_actorId_fkey"
+          FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+      END IF;
+    END $$;
+  `);
+
+  await run(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'OfficeAuditLog_targetUserId_fkey'
+      ) THEN
+        ALTER TABLE "OfficeAuditLog"
+          ADD CONSTRAINT "OfficeAuditLog_targetUserId_fkey"
+          FOREIGN KEY ("targetUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+      END IF;
+    END $$;
+  `);
+
+  await run(`CREATE INDEX IF NOT EXISTS "OfficeAuditLog_actorId_createdAt_idx" ON "OfficeAuditLog"("actorId", "createdAt");`);
+  await run(`CREATE INDEX IF NOT EXISTS "OfficeAuditLog_targetUserId_createdAt_idx" ON "OfficeAuditLog"("targetUserId", "createdAt");`);
+  await run(`CREATE INDEX IF NOT EXISTS "OfficeAuditLog_action_createdAt_idx" ON "OfficeAuditLog"("action", "createdAt");`);
+
   await run(`
     DO $$ BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ConversationKind') THEN

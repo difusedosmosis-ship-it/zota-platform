@@ -11,6 +11,11 @@ type CookiePayload = {
     role: "CONSUMER" | "VENDOR" | "ADMIN";
     email?: string | null;
     phone?: string | null;
+    fullName?: string | null;
+    officeTitle?: string | null;
+    officePermissions?: string[];
+    isSuperAdmin?: boolean;
+    isDisabled?: boolean;
   };
 };
 

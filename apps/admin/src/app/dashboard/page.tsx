@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { AppShell } from "@/components/Shell";
 import { StatusToast } from "@/components/StatusToast";
 import { apiGet, apiPost } from "@/lib/api";
@@ -16,8 +15,39 @@ type OverviewResponse = {
     vendors: { total: number; approved: number; online: number };
     kyc: { total: number; pending: number };
     categories: { total: number; latest: Array<{ id: string; name: string; kind: string }> };
-    requests: { total: number; activeJobs: number; queuedJobs: number; byStatus: Record<string, number> };
-    communications: { conversations: number; messages: number };
+    requests: {
+      total: number;
+      activeJobs: number;
+      queuedJobs: number;
+      byStatus: Record<string, number>;
+      detail: {
+        active: Array<{ id: string; category: string; city: string; status: string; updatedAt: string }>;
+        expired: Array<{ id: string; category: string; city: string; status: string; updatedAt: string }>;
+      };
+    };
+    communications: { conversations: number; messages: number; calls: number };
+    officeUsers: Array<{
+      id: string;
+      name: string | null;
+      email: string | null;
+      officeTitle: string | null;
+      isSuperAdmin: boolean;
+      isOnline: boolean;
+      lastSeenAt: string | null;
+      lastRoute: string | null;
+    }>;
+    recentCalls: Array<{
+      id: string;
+      type: string;
+      status: string;
+      startedAt: string;
+      endedAt: string | null;
+      initiator: string;
+      recipient: string;
+      requestId: string | null;
+      requestCategory: string | null;
+      businessName: string | null;
+    }>;
     latestKyc: Array<{ id: string; status: string; createdAt: string; businessName: string | null; email: string | null }>;
     latestVendors: Array<{ id: string; businessName: string | null; isOnline: boolean; kycStatus: string; updatedAt: string }>;
   };
@@ -26,7 +56,7 @@ type OverviewResponse = {
 type CategoryResponse = { ok: boolean; category: { id: string; name: string } };
 
 function formatIdentity(user: SessionUser | null) {
-  const seed = user?.email?.split("@")[0] ?? user?.phone ?? "Office User";
+  const seed = user?.fullName ?? user?.email?.split("@")[0] ?? user?.phone ?? "Office User";
   return seed
     .replace(/[._-]+/g, " ")
     .trim()
@@ -106,7 +136,7 @@ export default function AdminDashboardPage() {
   async function bootstrapDefaultCategories() {
     setTone("info");
     setStatus("Syncing default categories...");
-    const res = await apiPost<{ ok: boolean; categories: Array<{ id: string }> }>("/categories/bootstrap", {});
+    const res = await apiPost<{ ok: boolean }>("/categories/bootstrap", {});
     if (!res.ok) {
       setTone("error");
       return setStatus(res.error ?? "Failed to sync categories.");
@@ -132,7 +162,7 @@ export default function AdminDashboardPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-100">Zota Office</p>
               <h2 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white">Good day, {identity}</h2>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
-                The office oversees verification, live jobs, categories, business approvals, and communication activity across the entire marketplace.
+                This desk now tracks verification, live jobs, office-user presence, category governance, messaging, calls, and the operational state of both Zota consumer and Zota business.
               </p>
             </div>
             <button className="bm-btn !rounded-full !px-3" onClick={() => void loadOffice()} aria-label="Refresh office">
@@ -144,7 +174,7 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Verification queue</p>
             <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{overview?.kyc.pending ?? 0}</p>
@@ -165,13 +195,18 @@ export default function AdminDashboardPage() {
             <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{overview?.vendors.online ?? 0}</p>
             <p className="mt-2 text-sm text-slate-500">Approved businesses currently open for the marketplace.</p>
           </article>
+          <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Calls tracked</p>
+            <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{overview?.communications.calls ?? 0}</p>
+            <p className="mt-2 text-sm text-slate-500">Recent call sessions visible to the office.</p>
+          </article>
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
           <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">System awareness</p>
-            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Users, businesses, and communications</h3>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Users, businesses, communications, and office presence</h3>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-[22px] bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Consumers</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{overview?.users.consumers ?? 0}</p>
@@ -181,12 +216,8 @@ export default function AdminDashboardPage() {
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{overview?.users.vendors ?? 0}</p>
               </div>
               <div className="rounded-[22px] bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Admins</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Office users</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{overview?.users.admins ?? 0}</p>
-              </div>
-              <div className="rounded-[22px] bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approved businesses</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">{overview?.vendors.approved ?? 0}</p>
               </div>
               <div className="rounded-[22px] bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Conversations</p>
@@ -195,6 +226,18 @@ export default function AdminDashboardPage() {
               <div className="rounded-[22px] bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Recent messages</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-950">{overview?.communications.messages ?? 0}</p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approved businesses</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{overview?.vendors.approved ?? 0}</p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Office online</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{overview?.officeUsers.filter((row) => row.isOnline).length ?? 0}</p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Categories</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">{overview?.categories.total ?? 0}</p>
               </div>
             </div>
           </article>
@@ -219,8 +262,45 @@ export default function AdminDashboardPage() {
 
         <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
           <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Request dashboard</p>
-            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Live request states across the marketplace</h3>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Request movement</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Exact requests in progress and expired</h3>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">In progress</p>
+                <div className="mt-3 space-y-2">
+                  {(overview?.requests.detail.active ?? []).length === 0 ? (
+                    <p className="text-sm text-slate-500">No active request details yet.</p>
+                  ) : (
+                    overview?.requests.detail.active.map((row) => (
+                      <div key={row.id} className="rounded-[16px] bg-white px-3 py-3">
+                        <p className="text-sm font-semibold text-slate-900">{row.category}</p>
+                        <p className="mt-1 text-xs text-slate-500">{row.city} · {row.status}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Expired</p>
+                <div className="mt-3 space-y-2">
+                  {(overview?.requests.detail.expired ?? []).length === 0 ? (
+                    <p className="text-sm text-slate-500">No expired request details yet.</p>
+                  ) : (
+                    overview?.requests.detail.expired.map((row) => (
+                      <div key={row.id} className="rounded-[16px] bg-white px-3 py-3">
+                        <p className="text-sm font-semibold text-slate-900">{row.category}</p>
+                        <p className="mt-1 text-xs text-slate-500">{row.city} · {row.status}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Request heatmap</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Status counts across the marketplace</h3>
             <div className="mt-4 space-y-3">
               {requestStatusEntries.length === 0 ? (
                 <p className="text-sm text-slate-500">No request activity yet.</p>
@@ -234,6 +314,32 @@ export default function AdminDashboardPage() {
               )}
             </div>
           </article>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+          <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Office presence</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Who is inside the office right now</h3>
+            <div className="mt-4 space-y-3">
+              {(overview?.officeUsers ?? []).length === 0 ? (
+                <p className="text-sm text-slate-500">No office operators loaded yet.</p>
+              ) : (
+                overview?.officeUsers.map((row) => (
+                  <div key={row.id} className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{row.name ?? row.email ?? "Office user"}</p>
+                        <p className="mt-1 text-xs text-slate-500">{row.officeTitle ?? "Office operator"} · {row.lastRoute ?? "No route captured yet"}</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${row.isOnline ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                        {row.isOnline ? "Online" : "Offline"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </article>
 
           <article className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Latest verification activity</p>
@@ -242,7 +348,7 @@ export default function AdminDashboardPage() {
               {(overview?.latestKyc ?? []).length === 0 ? (
                 <p className="text-sm text-slate-500">No recent KYC activity.</p>
               ) : (
-                overview!.latestKyc.map((row) => (
+                (overview?.latestKyc ?? []).map((row) => (
                   <article key={row.id} className="rounded-[20px] border border-slate-200 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -258,6 +364,29 @@ export default function AdminDashboardPage() {
               )}
             </div>
           </article>
+        </section>
+
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Recent calls</p>
+          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Call history and communication traces</h3>
+          <div className="mt-4 space-y-3">
+            {(overview?.recentCalls ?? []).length === 0 ? (
+              <p className="text-sm text-slate-500">No call activity captured yet.</p>
+            ) : (
+              (overview?.recentCalls ?? []).map((call) => (
+                <div key={call.id} className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{call.type} · {call.status}</p>
+                      <p className="mt-1 text-sm text-slate-600">{call.initiator} → {call.recipient}</p>
+                      <p className="mt-1 text-xs text-slate-500">{call.businessName ?? call.requestCategory ?? "Marketplace call"}</p>
+                    </div>
+                    <p className="text-xs text-slate-400">{new Date(call.startedAt).toLocaleString()}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </section>
       </div>
       <StatusToast message={status} tone={tone} />

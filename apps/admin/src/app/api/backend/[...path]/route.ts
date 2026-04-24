@@ -31,6 +31,26 @@ async function forward(req: NextRequest, ctx: { params: Promise<{ path: string[]
     const text = await upstream.text();
     console.info(JSON.stringify({ type: "audit", action: "proxy", requestId, method: req.method, endpoint, status: upstream.status, durationMs: Date.now() - started, userId: session?.user.id ?? null }));
 
+    if (session?.token && session.user.role === "ADMIN" && !endpoint.startsWith("/admin/users/me/activity")) {
+      void fetch(`${BACKEND}/admin/users/me/activity`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.token}`,
+          "x-request-id": requestId,
+        },
+        body: JSON.stringify({
+          route: endpoint,
+          action: "office_api_access",
+          details: {
+            method: req.method,
+            endpoint,
+            status: upstream.status,
+          },
+        }),
+      }).catch(() => null);
+    }
+
     return new NextResponse(text, {
       status: upstream.status,
       headers: {

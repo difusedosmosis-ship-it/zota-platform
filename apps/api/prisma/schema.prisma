@@ -120,6 +120,14 @@ model User {
   phone        String?  @unique
   passwordHash String?
   fullName     String?
+  officeTitle  String?
+  officePermissions String[] @default([])
+  isSuperAdmin Boolean @default(false)
+  isDisabled   Boolean @default(false)
+  lastSeenAt   DateTime?
+  lastLoginAt  DateTime?
+  lastLogoutAt DateTime?
+  lastRoute    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -143,6 +151,8 @@ model User {
   sentMessages     ChatMessage[] @relation("MessageSender")
   initiatedCalls   CallSession[] @relation("CallInitiator")
   receivedCalls    CallSession[] @relation("CallRecipient")
+  officeAuditActor OfficeAuditLog[] @relation("OfficeAuditActor")
+  officeAuditTarget OfficeAuditLog[] @relation("OfficeAuditTarget")
 }
 
 model VendorProfile {
@@ -519,4 +529,20 @@ model CallSession {
   @@index([initiatorId])
   @@index([recipientId])
   @@index([status])
+}
+
+model OfficeAuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?
+  actor        User?    @relation("OfficeAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  targetUserId String?
+  targetUser   User?    @relation("OfficeAuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  action       String
+  route        String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([action, createdAt])
 }
